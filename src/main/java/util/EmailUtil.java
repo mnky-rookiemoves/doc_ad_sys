@@ -1,115 +1,95 @@
 package util;
 
-import jakarta.mail.*;
-import jakarta.mail.internet.*;
+import com.sendgrid.Method;
+import com.sendgrid.Request;
+import com.sendgrid.Response;
+import com.sendgrid.SendGrid;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Email;
+
+import java.io.IOException;
 import java.util.List;
-import java.util.Properties;
 
 public class EmailUtil {
 
     /* =========================
-       ✅ GMAIL SMTP CONFIG
-       Change these to your
-       Gmail credentials
+       ✅ SENDGRID CONFIG
+       Uses Railway env variable
+       Falls back to local key
        ========================= */
+    private static final String API_KEY
+            = System.getenv("SENDGRID_API_KEY") != null
+            ? System.getenv("SENDGRID_API_KEY")
+            : "SG.your-key-here";
 
-    private static final String SMTP_HOST =
-        "smtp.gmail.com";
-    private static final String SMTP_PORT =
-        "465";
-    private static final String FROM_EMAIL =
-        "vandam.system@gmail.com";
-    private static final String APP_PASSWORD =
-        "urclapxayqjchfwl";
-    private static final String FROM_NAME =
-        "VANDAM Document Admission System";
+    private static final String FROM_EMAIL
+            = "vandam.system@gmail.com";
+
+    private static final String FROM_NAME
+            = "VANDAM Document Admission System";
 
     /* =========================
        CORE SEND METHOD
+       ✅ SendGrid HTTPS API
+       ✅ Works on Railway!
        ✅ Background thread
        ✅ Never crashes app
        ========================= */
     public static void sendEmail(
-        String toEmail,
-        String subject,
-        String htmlBody) {
+            String toEmail,
+            String subject,
+            String htmlBody) {
 
-    new Thread(() -> {
-        try {
-            Properties props = new Properties();
+        new Thread(() -> {
+            try {
+                Email from = new Email(
+                        FROM_EMAIL, FROM_NAME);
+                Email to = new Email(toEmail);
+                Content content = new Content(
+                        "text/html", htmlBody);
 
-            // ✅ Port 465 SSL — Works on Railway!
-            props.put("mail.smtp.host",
-                SMTP_HOST);
-            props.put("mail.smtp.port",
-                "465");
-            props.put("mail.smtp.auth",
-                "true");
-            props.put("mail.smtp.ssl.enable",
-                "true");
-            props.put("mail.smtp.socketFactory.port",
-                "465");
-            props.put("mail.smtp.socketFactory.class",
-                "javax.net.ssl.SSLSocketFactory");
-            props.put("mail.smtp.ssl.protocols",
-                "TLSv1.2");
-            props.put("mail.smtp.ssl.trust",
-                "smtp.gmail.com");
-            props.put("mail.smtp.connectiontimeout",
-                "10000");
-            props.put("mail.smtp.timeout",
-                "10000");
-            props.put("mail.smtp.writetimeout",
-                "10000");
+                Mail mail = new Mail(
+                        from, subject,
+                        to, content);
 
-            Session mailSession =
-                Session.getInstance(
-                    props,
-                    new Authenticator() {
-                        @Override
-                        protected PasswordAuthentication
-                                getPasswordAuthentication() {
-                            return new
-                                PasswordAuthentication(
-                                    FROM_EMAIL,
-                                    APP_PASSWORD);
-                        }
-                    });
+                SendGrid sg
+                        = new SendGrid(API_KEY);
+                Request request = new Request();
 
-            Message message =
-                new MimeMessage(mailSession);
+                request.setMethod(Method.POST);
+                request.setEndpoint("mail/send");
+                request.setBody(mail.build());
 
-            message.setFrom(
-                new InternetAddress(
-                    FROM_EMAIL, FROM_NAME));
-            message.setRecipients(
-                Message.RecipientType.TO,
-                InternetAddress.parse(toEmail));
-            message.setSubject(subject);
-            message.setContent(
-                htmlBody,
-                "text/html; charset=utf-8");
+                Response response
+                        = sg.api(request);
 
-            Transport.send(message);
+                if (response.getStatusCode()
+                        == 202) {
+                    System.out.println(
+                            "[EMAIL] ✅ Sent → "
+                            + toEmail);
+                } else {
+                    System.err.println(
+                            "[EMAIL] ⚠️ Failed → "
+                            + "Status: "
+                            + response.getStatusCode()
+                            + " | "
+                            + response.getBody());
+                }
 
-            System.out.println(
-                "[EMAIL] ✅ Sent → "
-                + toEmail);
-
-        } catch (Exception e) {
-            System.err.println(
-                "[EMAIL] ⚠️ Failed → "
-                + e.getMessage());
-            e.printStackTrace();
-        }
-    }).start();
-}
+            } catch (IOException e) {
+                System.err.println(
+                        "[EMAIL] ⚠️ Error → "
+                        + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+    }
 
     /* =========================
        TEMPLATE 1
        ✅ STUDENT WELCOME
-       Sent when student
-       record is created
        ========================= */
     public static void sendStudentWelcome(
             String toEmail,
@@ -118,17 +98,16 @@ public class EmailUtil {
             List<String> requirementNames,
             String requirementsUrl) {
 
-        String subject =
-            "🎓 Welcome to VANDAM — "
-            + "Document Submission Guide";
+        String subject
+                = "🎓 Welcome to VANDAM — "
+                + "Document Submission Guide";
 
-        // ✅ Build requirements rows
-        StringBuilder reqRows =
-            new StringBuilder();
+        StringBuilder reqRows
+                = new StringBuilder();
         int num = 1;
         for (String req : requirementNames) {
             reqRows.append(
-                String.format("""
+                    String.format("""
                     <tr>
                         <td style="
                             padding:8px 10px;
@@ -161,7 +140,6 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:28px;
                     text-align:center;">
@@ -170,8 +148,7 @@ public class EmailUtil {
                         🎓
                     </div>
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:22px;">
+                        margin:0;font-size:22px;">
                         Welcome to VANDAM!
                     </h2>
                     <p style="color:#ffcccc;
@@ -181,10 +158,8 @@ public class EmailUtil {
                         — Sta. Mesa Campus (MN0)
                     </p>
                 </div>
-
                 <div style="padding:28px;
                     background:#f9f9f9;">
-
                     <p style="font-size:15px;
                         margin-bottom:6px;">
                         Dear <b>%s</b>,
@@ -197,57 +172,49 @@ public class EmailUtil {
                         created in the VANDAM
                         Document Admission System.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
                         margin-bottom:24px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:160px;
                                 border:1px solid #ddd;">
                                 Student Name
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;
                                 font-weight:bold;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Category
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Campus
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 Sta. Mesa (MN0)
                             </td>
                         </tr>
                     </table>
-
                     <p style="font-size:14px;
                         font-weight:bold;
                         color:#6d0f0f;
@@ -262,7 +229,6 @@ public class EmailUtil {
                         the registrar's office
                         to submit the following:
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
@@ -301,7 +267,6 @@ public class EmailUtil {
                             %s
                         </tbody>
                     </table>
-
                     <div style="
                         background:#fff8e1;
                         border:1px solid #f9a825;
@@ -315,13 +280,10 @@ public class EmailUtil {
                         submitted to complete
                         your admission process.
                     </div>
-
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -330,10 +292,10 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            studentName,
-            studentName,
-            categoryName,
-            reqRows.toString());
+                studentName,
+                studentName,
+                categoryName,
+                reqRows.toString());
 
         sendEmail(toEmail, subject, body);
     }
@@ -341,8 +303,6 @@ public class EmailUtil {
     /* =========================
        TEMPLATE 2
        ✅ FILE UPLOADED
-       Sent to admin on every
-       file upload
        ========================= */
     public static void sendFileUploaded(
             String toEmail,
@@ -351,8 +311,8 @@ public class EmailUtil {
             String uploadedBy,
             String uploadedAt) {
 
-        String subject =
-            "📂 Document Uploaded — VANDAM";
+        String subject
+                = "📂 Document Uploaded — VANDAM";
 
         String body = String.format("""
             <div style="font-family:Arial,
@@ -360,17 +320,14 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:24px;
                     text-align:center;">
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:20px;">
+                        margin:0;font-size:20px;">
                         📂 Document Uploaded
                     </h2>
                 </div>
-
                 <div style="padding:24px;
                     background:#f9f9f9;">
                     <p style="font-size:14px;
@@ -378,74 +335,63 @@ public class EmailUtil {
                         A new document has been
                         uploaded in VANDAM.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:160px;
                                 border:1px solid #ddd;">
                                 Student
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Requirement
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Uploaded By
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Date
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                     </table>
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -454,10 +400,10 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            studentName,
-            requirementName,
-            uploadedBy,
-            uploadedAt);
+                studentName,
+                requirementName,
+                uploadedBy,
+                uploadedAt);
 
         sendEmail(toEmail, subject, body);
     }
@@ -465,8 +411,6 @@ public class EmailUtil {
     /* =========================
        TEMPLATE 3
        ✅ SUBMISSION COMPLETE
-       Sent to student when
-       all requirements uploaded
        ========================= */
     public static void sendSubmissionComplete(
             String toEmail,
@@ -476,8 +420,8 @@ public class EmailUtil {
             int total,
             String verifyUrl) {
 
-        String subject =
-            "✅ Submission Complete — VANDAM";
+        String subject
+                = "✅ Submission Complete — VANDAM";
 
         String body = String.format("""
             <div style="font-family:Arial,
@@ -485,17 +429,14 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:24px;
                     text-align:center;">
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:20px;">
+                        margin:0;font-size:20px;">
                         ✅ Submission Complete
                     </h2>
                 </div>
-
                 <div style="padding:24px;
                     background:#f9f9f9;">
                     <p style="font-size:14px;">
@@ -509,25 +450,21 @@ public class EmailUtil {
                         color:#2e7d32;">
                         COMPLETE</b>.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
                         margin-bottom:20px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:160px;
                                 border:1px solid #ddd;">
                                 Reference No
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 font-family:
-                                'Courier New',
-                                monospace;
+                                'Courier New',monospace;
                                 color:#6d0f0f;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
@@ -535,29 +472,25 @@ public class EmailUtil {
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Submitted
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %d of %d requirements
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Status
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 color:#2e7d32;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
@@ -565,23 +498,19 @@ public class EmailUtil {
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Campus
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 Sta. Mesa (MN0)
                             </td>
                         </tr>
                     </table>
-
-                    <div style="
-                        text-align:center;">
+                    <div style="text-align:center;">
                         <a href="%s"
                            style="
                                display:inline-block;
@@ -596,11 +525,9 @@ public class EmailUtil {
                         </a>
                     </div>
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -609,10 +536,10 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            studentName,
-            refNo,
-            submitted, total,
-            verifyUrl);
+                studentName,
+                refNo,
+                submitted, total,
+                verifyUrl);
 
         sendEmail(toEmail, subject, body);
     }
@@ -620,8 +547,6 @@ public class EmailUtil {
     /* =========================
        TEMPLATE 4
        ✅ ACCOUNT CREATED
-       Sent to staff/admin
-       when account is created
        ========================= */
     public static void sendAccountCreated(
             String toEmail,
@@ -629,8 +554,8 @@ public class EmailUtil {
             String role,
             String loginUrl) {
 
-        String subject =
-            "👤 Account Created — VANDAM";
+        String subject
+                = "👤 Account Created — VANDAM";
 
         String body = String.format("""
             <div style="font-family:Arial,
@@ -638,17 +563,14 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:24px;
                     text-align:center;">
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:20px;">
+                        margin:0;font-size:20px;">
                         👤 Account Created
                     </h2>
                 </div>
-
                 <div style="padding:24px;
                     background:#f9f9f9;">
                     <p style="font-size:14px;
@@ -657,66 +579,56 @@ public class EmailUtil {
                         created in the VANDAM
                         Document Admission System.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
                         margin-bottom:20px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:140px;
                                 border:1px solid #ddd;">
                                 Username
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Role
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Campus
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 Sta. Mesa (MN0)
                             </td>
                         </tr>
                     </table>
-
                     <p style="color:#c62828;
                         font-size:13px;
                         margin-bottom:20px;">
                         ⚠️ Please change your
                         password after first login.
                     </p>
-
-                    <div style="
-                        text-align:center;">
+                    <div style="text-align:center;">
                         <a href="%s"
                            style="
                                display:inline-block;
@@ -731,11 +643,9 @@ public class EmailUtil {
                         </a>
                     </div>
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -744,9 +654,9 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            username,
-            role,
-            loginUrl);
+                username,
+                role,
+                loginUrl);
 
         sendEmail(toEmail, subject, body);
     }
@@ -754,8 +664,6 @@ public class EmailUtil {
     /* =========================
        TEMPLATE 5
        ✅ PASSWORD CHANGED
-       Sent to user when
-       password is updated
        ========================= */
     public static void sendPasswordChanged(
             String toEmail,
@@ -763,8 +671,8 @@ public class EmailUtil {
             String changedAt,
             String ipAddress) {
 
-        String subject =
-            "🔒 Password Changed — VANDAM";
+        String subject
+                = "🔒 Password Changed — VANDAM";
 
         String body = String.format("""
             <div style="font-family:Arial,
@@ -772,17 +680,14 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:24px;
                     text-align:center;">
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:20px;">
+                        margin:0;font-size:20px;">
                         🔒 Password Changed
                     </h2>
                 </div>
-
                 <div style="padding:24px;
                     background:#f9f9f9;">
                     <p style="font-size:14px;
@@ -790,56 +695,48 @@ public class EmailUtil {
                         Your password was changed
                         successfully.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
                         margin-bottom:20px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:140px;
                                 border:1px solid #ddd;">
                                 Username
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 Changed At
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 IP Address
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                     </table>
-
                     <p style="color:#c62828;
                         font-size:13px;">
                         ⚠️ If you did not make
@@ -847,11 +744,9 @@ public class EmailUtil {
                         administrator immediately.
                     </p>
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -860,9 +755,9 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            username,
-            changedAt,
-            ipAddress);
+                username,
+                changedAt,
+                ipAddress);
 
         sendEmail(toEmail, subject, body);
     }
@@ -870,8 +765,6 @@ public class EmailUtil {
     /* =========================
        TEMPLATE 6
        ✅ CATEGORY UPDATED
-       Sent to student when
-       their category changes
        ========================= */
     public static void sendCategoryUpdated(
             String toEmail,
@@ -879,8 +772,8 @@ public class EmailUtil {
             String oldCategory,
             String newCategory) {
 
-        String subject =
-            "📁 Category Updated — VANDAM";
+        String subject
+                = "📁 Category Updated — VANDAM";
 
         String body = String.format("""
             <div style="font-family:Arial,
@@ -888,17 +781,14 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:24px;
                     text-align:center;">
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:20px;">
+                        margin:0;font-size:20px;">
                         📁 Category Updated
                     </h2>
                 </div>
-
                 <div style="padding:24px;
                     background:#f9f9f9;">
                     <p style="font-size:14px;">
@@ -911,37 +801,32 @@ public class EmailUtil {
                         has been updated in
                         VANDAM.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
                         margin-bottom:20px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:180px;
                                 border:1px solid #ddd;">
                                 Previous Category
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;
                                 color:#c62828;">
                                 %s
                             </td>
                         </tr>
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 New Category
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 border:1px solid #ddd;
                                 color:#2e7d32;
                                 font-weight:bold;">
@@ -949,7 +834,6 @@ public class EmailUtil {
                             </td>
                         </tr>
                     </table>
-
                     <p style="font-size:12px;
                         color:#777;">
                         If you have questions,
@@ -957,11 +841,9 @@ public class EmailUtil {
                         registrar's office.
                     </p>
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -970,26 +852,24 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            studentName,
-            oldCategory,
-            newCategory);
+                studentName,
+                oldCategory,
+                newCategory);
 
         sendEmail(toEmail, subject, body);
     }
 
     /* =========================
        TEMPLATE 7
-       ✅ EMAIL ADDRESS CHANGED
-       Sent to OLD email when
-       student email is updated
+       ✅ EMAIL CHANGED
        ========================= */
     public static void sendEmailChanged(
             String toOldEmail,
             String studentName,
             String newEmail) {
 
-        String subject =
-            "🔒 Email Address Updated — VANDAM";
+        String subject
+                = "🔒 Email Address Updated — VANDAM";
 
         String body = String.format("""
             <div style="font-family:Arial,
@@ -997,17 +877,14 @@ public class EmailUtil {
                 margin:0 auto;border:1px
                 solid #eee;border-radius:8px;
                 overflow:hidden;">
-
                 <div style="background:#6d0f0f;
                     padding:24px;
                     text-align:center;">
                     <h2 style="color:#fff;
-                        margin:0;
-                        font-size:20px;">
+                        margin:0;font-size:20px;">
                         🔒 Email Address Updated
                     </h2>
                 </div>
-
                 <div style="padding:24px;
                     background:#f9f9f9;">
                     <p style="font-size:14px;">
@@ -1020,29 +897,25 @@ public class EmailUtil {
                         address has been updated
                         in VANDAM.
                     </p>
-
                     <table style="width:100%%;
                         border-collapse:collapse;
                         font-size:13px;
                         margin-bottom:20px;">
                         <tr>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 background:#f0f0f0;
                                 font-weight:bold;
                                 width:160px;
                                 border:1px solid #ddd;">
                                 New Email
                             </td>
-                            <td style="
-                                padding:10px;
+                            <td style="padding:10px;
                                 font-weight:bold;
                                 border:1px solid #ddd;">
                                 %s
                             </td>
                         </tr>
                     </table>
-
                     <p style="color:#c62828;
                         font-size:13px;">
                         ⚠️ If you did not
@@ -1051,11 +924,9 @@ public class EmailUtil {
                         office immediately.
                     </p>
                 </div>
-
                 <div style="padding:14px;
                     text-align:center;
-                    font-size:11px;
-                    color:#999;
+                    font-size:11px;color:#999;
                     background:#fff;
                     border-top:1px solid #eee;">
                     VANDAM Document Admission
@@ -1064,123 +935,111 @@ public class EmailUtil {
                 </div>
             </div>
             """,
-            studentName,
-            newEmail);
+                studentName,
+                newEmail);
 
         sendEmail(toOldEmail, subject, body);
     }
+
     /* =========================
-   TEMPLATE 8
-   ✅ PASSWORD RESET LINK
-   Sent when user requests
-   forgot password
-   ========================= */
-public static void sendPasswordReset(
-        String toEmail,
-        String username,
-        String resetUrl) {
+       TEMPLATE 8
+       ✅ PASSWORD RESET
+       ========================= */
+    public static void sendPasswordReset(
+            String toEmail,
+            String username,
+            String resetUrl) {
 
-    String subject =
-        "🔑 Password Reset — VANDAM";
+        String subject
+                = "🔑 Password Reset — VANDAM";
 
-    String body = String.format("""
-        <div style="font-family:Arial,
-            sans-serif;max-width:600px;
-            margin:0 auto;border:1px
-            solid #eee;border-radius:8px;
-            overflow:hidden;">
-
-            <div style="background:#6d0f0f;
-                padding:24px;
-                text-align:center;">
-                <h2 style="color:#fff;
-                    margin:0;
-                    font-size:20px;">
-                    🔑 Password Reset Request
-                </h2>
-            </div>
-
-            <div style="padding:24px;
-                background:#f9f9f9;">
-
-                <p style="font-size:14px;">
-                    Dear <b>%s</b>,
-                </p>
-                <p style="font-size:13px;
-                    color:#555;
-                    margin-bottom:20px;">
-                    We received a request to
-                    reset your password for
-                    the VANDAM Document
-                    Admission System.
-                </p>
-
-                <div style="
-                    background:#fff8e1;
-                    border:1px solid #f9a825;
-                    border-radius:4px;
-                    padding:12px 16px;
-                    font-size:12px;
-                    color:#555;
-                    margin-bottom:20px;">
-                    ⏳ This link expires in
-                    <b>30 minutes</b>.
-                </div>
-
-                <div style="
-                    text-align:center;
-                    margin-bottom:20px;">
-                    <a href="%s"
-                       style="
-                           display:inline-block;
-                           padding:12px 28px;
-                           background:#6d0f0f;
-                           color:#fff;
-                           text-decoration:none;
-                           border-radius:4px;
-                           font-weight:bold;
-                           font-size:14px;">
-                        🔑 Reset My Password
-                    </a>
-                </div>
-
-                <p style="font-size:12px;
-                    color:#999;
+        String body = String.format("""
+            <div style="font-family:Arial,
+                sans-serif;max-width:600px;
+                margin:0 auto;border:1px
+                solid #eee;border-radius:8px;
+                overflow:hidden;">
+                <div style="background:#6d0f0f;
+                    padding:24px;
                     text-align:center;">
-                    If you did not request
-                    this, ignore this email.
-                    Your password will not
-                    be changed.
-                </p>
-
-                <hr style="border:none;
-                    border-top:1px solid #eee;
-                    margin:16px 0;">
-
-                <p style="font-size:11px;
-                    color:#bbb;
-                    word-break:break-all;">
-                    Or copy this link:<br>
-                    %s
-                </p>
+                    <h2 style="color:#fff;
+                        margin:0;font-size:20px;">
+                        🔑 Password Reset Request
+                    </h2>
+                </div>
+                <div style="padding:24px;
+                    background:#f9f9f9;">
+                    <p style="font-size:14px;">
+                        Dear <b>%s</b>,
+                    </p>
+                    <p style="font-size:13px;
+                        color:#555;
+                        margin-bottom:20px;">
+                        We received a request to
+                        reset your password for
+                        the VANDAM Document
+                        Admission System.
+                    </p>
+                    <div style="
+                        background:#fff8e1;
+                        border:1px solid #f9a825;
+                        border-radius:4px;
+                        padding:12px 16px;
+                        font-size:12px;
+                        color:#555;
+                        margin-bottom:20px;">
+                        ⏳ This link expires in
+                        <b>30 minutes</b>.
+                    </div>
+                    <div style="
+                        text-align:center;
+                        margin-bottom:20px;">
+                        <a href="%s"
+                           style="
+                               display:inline-block;
+                               padding:12px 28px;
+                               background:#6d0f0f;
+                               color:#fff;
+                               text-decoration:none;
+                               border-radius:4px;
+                               font-weight:bold;
+                               font-size:14px;">
+                            🔑 Reset My Password
+                        </a>
+                    </div>
+                    <p style="font-size:12px;
+                        color:#999;
+                        text-align:center;">
+                        If you did not request
+                        this, ignore this email.
+                        Your password will not
+                        be changed.
+                    </p>
+                    <hr style="border:none;
+                        border-top:1px solid #eee;
+                        margin:16px 0;">
+                    <p style="font-size:11px;
+                        color:#bbb;
+                        word-break:break-all;">
+                        Or copy this link:<br>
+                        %s
+                    </p>
+                </div>
+                <div style="padding:14px;
+                    text-align:center;
+                    font-size:11px;color:#999;
+                    background:#fff;
+                    border-top:1px solid #eee;">
+                    VANDAM Document Admission
+                    System &nbsp;|&nbsp;
+                    Sta. Mesa Campus (MN0)
+                </div>
             </div>
+            """,
+                username,
+                resetUrl,
+                resetUrl);
 
-            <div style="padding:14px;
-                text-align:center;
-                font-size:11px;
-                color:#999;
-                background:#fff;
-                border-top:1px solid #eee;">
-                VANDAM Document Admission System
-                &nbsp;|&nbsp;
-                Sta. Mesa Campus (MN0)
-            </div>
-        </div>
-        """,
-        username,  // %s → Dear username
-        resetUrl,  // %s → href button link
-        resetUrl); // %s → plain text link
-
-    sendEmail(toEmail, subject, body);
+        sendEmail(toEmail, subject, body);
     }
 }
