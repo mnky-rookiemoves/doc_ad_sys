@@ -5,24 +5,32 @@ import jakarta.mail.internet.*;
 import java.util.List;
 import java.util.Properties;
 
+
 public class EmailUtil {
 
-    /* =========================
-       ✅ GMAIL SMTP CONFIG
-       Change these to your
-       Gmail credentials
-       ========================= */
+    // ✅ Use Railway environment variables!
+    // Falls back to hardcoded values locally
+    private static final String SMTP_HOST    
+        = getEnv("SMTP_HOST",     "smtp.gmail.com");
+    
+    private static final String SMTP_PORT    
+        = getEnv("SMTP_PORT",     "465");
+    
+    private static final String FROM_EMAIL   
+        = getEnv("SMTP_FROM_EMAIL", "vandam.system@gmail.com");
+    
+    private static final String APP_PASSWORD 
+        = getEnv("SMTP_APP_PASSWORD", "urclapxayqjchfwl");
+    
+    private static final String FROM_NAME    
+        = "VANDAM Document Admission System";
 
-    private static final String SMTP_HOST =
-        "smtp.gmail.com";
-    private static final String SMTP_PORT =
-        "587";
-    private static final String FROM_EMAIL =
-        "vandam.system@gmail.com";
-    private static final String APP_PASSWORD =
-        "urclapxayqjchfwl";
-    private static final String FROM_NAME =
-        "VANDAM Document Admission System";
+    // ✅ Helper to get env variable with fallback
+    private static String getEnv(String key, String fallback) {
+        String val = System.getenv(key);
+        return (val != null && !val.isEmpty()) ? val : fallback;
+    }
+
 
     /* =========================
        CORE SEND METHOD
