@@ -45,12 +45,8 @@ public class StudentServlet extends HttpServlet {
        ✅ LOCAL IP CONFIGURATION
        Same as other servlets
        ========================= */
-    private static final String LOCAL_IP
-            = "192.168.95.174";
-    private static final String LOCAL_PORT
-            = "8443";
 
-    /* =========================
+ /* =========================
        DISPLAY STUDENTS
        ========================= */
     @Override

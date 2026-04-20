@@ -105,7 +105,7 @@ public class TestEmailServlet
                     "VDM-TEST-00000-MN0-0000000",
                     7,
                     7,
-                    "https://192.168.95.174:8443"
+                    ""
                     + request.getContextPath()
                     + "/verify?ref="
                     + "VDM-TEST-00000-MN0-0000000"
@@ -119,7 +119,7 @@ public class TestEmailServlet
                     toEmail,
                     "testuser (TEST)",
                     "Staff",
-                    "https://192.168.95.174:8443"
+                    ""
                     + request.getContextPath()
                     + "/login.jsp"
             );
