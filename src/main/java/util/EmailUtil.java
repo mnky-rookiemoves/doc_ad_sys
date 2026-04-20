@@ -1,9 +1,9 @@
 package util;
 
-import java.io.IOException;
+import java.io.IOException;       // ✅ Correct!
 import java.util.List;
 
-import com.sendgrid.http.HttpMethod
+import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
@@ -55,7 +55,7 @@ public class EmailUtil {
                 Request request = new Request();
 
                 // ✅ HttpMethod instead of Method!
-                request.setMethod(HttpMethod.POST);
+                request.setMethod(Method.POST);
                 request.setEndpoint("mail/send");
                 request.setBody(mail.build());
 
