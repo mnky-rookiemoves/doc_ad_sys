@@ -16,7 +16,7 @@ public class EmailUtil {
     private static final String SMTP_HOST =
         "smtp.gmail.com";
     private static final String SMTP_PORT =
-        "587";
+        "465";
     private static final String FROM_EMAIL =
         "vandam.system@gmail.com";
     private static final String APP_PASSWORD =
@@ -30,87 +30,80 @@ public class EmailUtil {
        ✅ Never crashes app
        ========================= */
     public static void sendEmail(
-            String toEmail,
-            String subject,
-            String htmlBody) {
+        String toEmail,
+        String subject,
+        String htmlBody) {
 
-        new Thread(() -> {
-            try {
-                Properties props = new Properties();
+    new Thread(() -> {
+        try {
+            Properties props = new Properties();
 
-                props.put(
-                    "mail.smtp.host",
-                    SMTP_HOST);
-                props.put(
-                    "mail.smtp.port",
-                    SMTP_PORT);
-                props.put(
-                    "mail.smtp.auth",
-                    "true");
-                props.put(
-                    "mail.smtp.starttls.enable",
-                    "true");
-                props.put(
-                    "mail.smtp.starttls.required",
-                    "true");
-                props.put(
-                    "mail.smtp.ssl.protocols",
-                    "TLSv1.2");
-                props.put(
-                    "mail.smtp.ssl.trust",
-                    "smtp.gmail.com");  // ✅ ONLY ONE — Gmail
-                props.put(
-                    "mail.smtp.connectiontimeout",
-                    "5000");
-                props.put(
-                    "mail.smtp.timeout",
-                    "5000");
-                props.put(
-                    "mail.smtp.writetimeout",
-                    "5000");
+            // ✅ Port 465 SSL — Works on Railway!
+            props.put("mail.smtp.host",
+                SMTP_HOST);
+            props.put("mail.smtp.port",
+                "465");
+            props.put("mail.smtp.auth",
+                "true");
+            props.put("mail.smtp.ssl.enable",
+                "true");
+            props.put("mail.smtp.socketFactory.port",
+                "465");
+            props.put("mail.smtp.socketFactory.class",
+                "javax.net.ssl.SSLSocketFactory");
+            props.put("mail.smtp.ssl.protocols",
+                "TLSv1.2");
+            props.put("mail.smtp.ssl.trust",
+                "smtp.gmail.com");
+            props.put("mail.smtp.connectiontimeout",
+                "10000");
+            props.put("mail.smtp.timeout",
+                "10000");
+            props.put("mail.smtp.writetimeout",
+                "10000");
 
-                Session mailSession =
-                    Session.getInstance(
-                        props,
-                        new Authenticator() {
-                            @Override
-                            protected PasswordAuthentication
-                                    getPasswordAuthentication() {
-                                return new
-                                    PasswordAuthentication(
-                                        FROM_EMAIL,
-                                        APP_PASSWORD);
-                            }
-                        });
+            Session mailSession =
+                Session.getInstance(
+                    props,
+                    new Authenticator() {
+                        @Override
+                        protected PasswordAuthentication
+                                getPasswordAuthentication() {
+                            return new
+                                PasswordAuthentication(
+                                    FROM_EMAIL,
+                                    APP_PASSWORD);
+                        }
+                    });
 
-                Message message =
-                    new MimeMessage(mailSession);
+            Message message =
+                new MimeMessage(mailSession);
 
-                message.setFrom(
-                    new InternetAddress(
-                        FROM_EMAIL, FROM_NAME));
-                message.setRecipients(
-                    Message.RecipientType.TO,
-                    InternetAddress.parse(toEmail));
-                message.setSubject(subject);
-                message.setContent(
-                    htmlBody,
-                    "text/html; charset=utf-8");
+            message.setFrom(
+                new InternetAddress(
+                    FROM_EMAIL, FROM_NAME));
+            message.setRecipients(
+                Message.RecipientType.TO,
+                InternetAddress.parse(toEmail));
+            message.setSubject(subject);
+            message.setContent(
+                htmlBody,
+                "text/html; charset=utf-8");
 
-                Transport.send(message);
+            Transport.send(message);
 
-                System.out.println(
-                    "[EMAIL] ✅ Sent → "
-                    + toEmail);
+            System.out.println(
+                "[EMAIL] ✅ Sent → "
+                + toEmail);
 
-            } catch (Exception e) {
-                System.err.println(
-                    "[EMAIL] ⚠️ Failed → "
-                    + e.getMessage());
-                    e.printStackTrace();
-            }
-        }).start();
-    }
+        } catch (Exception e) {
+            System.err.println(
+                "[EMAIL] ⚠️ Failed → "
+                + e.getMessage());
+            e.printStackTrace();
+        }
+    }).start();
+}
 
     /* =========================
        TEMPLATE 1
