@@ -7,7 +7,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Now copy src
+# Copy src
 COPY src ./src
 
 # Build WAR, skip tests
@@ -18,6 +18,9 @@ FROM tomcat:10.1-jdk17
 
 # Remove default Tomcat apps
 RUN rm -rf /usr/local/tomcat/webapps/*
+
+# ✅ Copy custom server.xml (HTTP only, port 8080 for Railway)
+COPY src/main/tomcat/server.xml /usr/local/tomcat/conf/server.xml
 
 # Copy built WAR into Tomcat
 COPY --from=build /app/target/doc_ad_sys.war /usr/local/tomcat/webapps/ROOT.war
