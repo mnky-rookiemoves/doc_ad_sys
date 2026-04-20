@@ -1,5 +1,6 @@
 package util;
 
+import com.sendgrid.Method;      
 import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;

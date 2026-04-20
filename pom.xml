@@ -255,17 +255,16 @@
         <dependency>
             <groupId>com.sun.mail</groupId>
             <artifactId>jakarta.mail</artifactId>
-            <version>${javamail.version}</version>
-        </dependency>
+        <version>${javamail.version}</version>
+    </dependency>
 
-        <!-- ✅ SendGrid Email API -->
-        <dependency>
-            <groupId>com.sendgrid</groupId>
-            <artifactId>sendgrid-java</artifactId>
-            <version>4.10.2</version>
-        </dependency>
-
-
+    <!-- ✅ SendGrid Email API -->
+    <!-- ✅ SendGrid Email API -->
+<dependency>
+<groupId>com.sendgrid</groupId>
+<artifactId>sendgrid-java</artifactId>
+<version>4.10.2</version>
+</dependency>
     </dependencies>
 
     <!-- =========================
