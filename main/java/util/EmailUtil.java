@@ -46,30 +46,17 @@ public class EmailUtil {
             try {
                 Properties props = new Properties();
 
-                props.put(
-                    "mail.smtp.host",
-                    SMTP_HOST);
-               
-props.put("mail.smtp.port",              "465");
-props.put("mail.smtp.ssl.enable",        "true");   // ← Add this
-props.put("mail.smtp.starttls.enable",   "false");  // ← Change to false
-props.put("mail.smtp.starttls.required", "false");  // ← Change to false
-props.put("mail.smtp.auth","true");
-                props.put(
-                    "mail.smtp.ssl.protocols",
-                    "TLSv1.2");
-                props.put(
-                    "mail.smtp.ssl.trust",
-                    "smtp.gmail.com");  // ✅ ONLY ONE — Gmail
-                props.put(
-                    "mail.smtp.connectiontimeout",
-                    "5000");
-                props.put(
-                    "mail.smtp.timeout",
-                    "5000");
-                props.put(
-                    "mail.smtp.writetimeout",
-                    "5000");
+                props.put("mail.smtp.host",              SMTP_HOST);
+                props.put("mail.smtp.port",              "465");
+                props.put("mail.smtp.auth",              "true");
+                props.put("mail.smtp.socketFactory.port","465");
+                props.put("mail.smtp.socketFactory.class","javax.net.ssl.SSLSocketFactory");
+                props.put("mail.smtp.ssl.enable",        "true");
+                props.put("mail.smtp.ssl.protocols",     "TLSv1.2");
+                props.put("mail.smtp.ssl.trust",         "smtp.gmail.com");
+                props.put("mail.smtp.connectiontimeout", "10000");
+                props.put("mail.smtp.timeout",           "10000");
+                props.put("mail.smtp.writetimeout",      "10000");
 
                 Session mailSession =
                     Session.getInstance(
