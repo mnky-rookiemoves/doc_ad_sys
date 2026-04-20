@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import kyrie.AppConfig;
 import model.RequirementType;
 import model.Student;
 import model.StudentCategory;
@@ -95,7 +96,6 @@ public class BatchPrintServlet extends HttpServlet {
             String[] idArray
                     = idsParam.split(",");
 
-            // ✅ Fetch requirements ONCE
             List<RequirementType> requirements
                     = reqDAO.getAllRequirements();
 
@@ -112,7 +112,7 @@ public class BatchPrintServlet extends HttpServlet {
                     studentId = Integer.parseInt(
                             idStr.trim());
                 } catch (NumberFormatException e) {
-                    continue; // skip bad IDs
+                    continue;
                 }
 
                 Student student
@@ -132,8 +132,7 @@ public class BatchPrintServlet extends HttpServlet {
                             = categoryDAO.getById(
                                     student.getCategoryId());
                     if (cat != null) {
-                        catName
-                                = cat.getCategoryName();
+                        catName = cat.getCategoryName();
                     }
                 }
 
@@ -146,7 +145,6 @@ public class BatchPrintServlet extends HttpServlet {
 
                 /* =========================
                    COUNT SUBMITTED
-                   ✅ Correct loop structure
                    ========================= */
                 int submitted = 0;
                 for (RequirementType r
@@ -160,9 +158,8 @@ public class BatchPrintServlet extends HttpServlet {
                             break;
                         }
                     }
-                } // ✅ Loop closes HERE
+                }
 
-                // ✅ Cap at total
                 int safeSubmitted = Math.min(
                         submitted,
                         requirements.size());
@@ -174,8 +171,6 @@ public class BatchPrintServlet extends HttpServlet {
 
                 /* =========================
                    REFERENCE NUMBER
-                   ✅ Generated ONCE per student
-                   OUTSIDE the upload loop
                    ========================= */
                 String refNo
                         = printLogDAO.savePrintLog(
@@ -186,24 +181,21 @@ public class BatchPrintServlet extends HttpServlet {
                         );
 
                 /* =========================
-                QR CODE
-                ✅ Generated ONCE per student
-                OUTSIDE the upload loop
-                ✅ Uses LOCAL IP so phone
-                can scan on same Wi-Fi
-                ✅ No internet needed
-                ✅ Perfect for LAN / defense
-                ========================= */
-                String verifyUrl
-                        = "http://192.168.95.174:8081"
-                        + request.getContextPath()
-                        + "/verify?ref=" + refNo;
+                   QR CODE
+                   ✅ FIXED — No double
+                   context path!
+                   ========================= */
+                String baseUrl
+                        = AppConfig.getBaseUrl(request)
+                        + "verify?ref=" + refNo;
+                // ✅ Removed duplicate
+                // getContextPath()!
 
                 String qrCode = "";
                 try {
                     qrCode = QRCodeUtil
                             .generateBase64QRCode(
-                                    verifyUrl, 100);
+                                    baseUrl, 100);
                 } catch (Exception qrEx) {
                     qrEx.printStackTrace();
                 }
@@ -224,7 +216,7 @@ public class BatchPrintServlet extends HttpServlet {
 
                 batchRows.add(row);
 
-            } // ✅ End student loop
+            }
 
             /* =========================
                SET ATTRIBUTES

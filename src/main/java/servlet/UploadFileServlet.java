@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
+import kyrie.AppConfig;
 import model.RequirementType;
 import model.Student;
 import model.Upload;
@@ -52,7 +53,8 @@ public class UploadFileServlet extends HttpServlet {
     private static final java.util.Set<String> ALLOWED_EXTENSIONS
             = new java.util.HashSet<>(
                     java.util.Arrays.asList(
-                            "jpg", "jpeg", "png", "pdf"));
+                            "jpg", "jpeg",
+                            "png", "pdf"));
 
     private static final java.util.Set<String> ALLOWED_MIME_TYPES
             = new java.util.HashSet<>(
@@ -65,18 +67,12 @@ public class UploadFileServlet extends HttpServlet {
             = Pattern.compile(
                     "^[a-zA-Z0-9 _.\\-]+$");
 
-    /* =========================
-       ✅ LOCAL IP
-       Same as other servlets
-       ========================= */
-    private static final String LOCAL_IP
-            = "192.168.95.174";
-    private static final String LOCAL_PORT
-            = "8443";
+    // ✅ LOCAL_IP and LOCAL_PORT REMOVED!
+    // AppConfig.getBaseUrl(request) handles
+    // URLs dynamically!
 
     /* =========================
        ADMIN EMAIL
-       ✅ Change to your admin email
        ========================= */
     private static final String ADMIN_EMAIL
             = "vandam.system@gmail.com";
@@ -111,7 +107,8 @@ public class UploadFileServlet extends HttpServlet {
                 = request.getParameter("requirementId");
 
         String redirectBase
-                = "uploads?studentId=" + studentIdParam;
+                = "uploads?studentId="
+                + studentIdParam;
 
         if (studentIdParam == null
                 || studentIdParam.trim().isEmpty()
@@ -119,7 +116,8 @@ public class UploadFileServlet extends HttpServlet {
                 || requirementIdParam.trim()
                         .isEmpty()) {
             response.sendRedirect(
-                    "students?error=Missing+parameters");
+                    "students?error="
+                    + "Missing+parameters");
             return;
         }
 
@@ -133,7 +131,8 @@ public class UploadFileServlet extends HttpServlet {
                     requirementIdParam.trim());
         } catch (NumberFormatException e) {
             response.sendRedirect(
-                    "students?error=Invalid+parameters");
+                    "students?error="
+                    + "Invalid+parameters");
             return;
         }
 
@@ -178,8 +177,8 @@ public class UploadFileServlet extends HttpServlet {
         long fileSize = filePart.getSize();
 
         String extension = "";
-        int dotIndex
-                = originalFileName.lastIndexOf('.');
+        int dotIndex = originalFileName
+                .lastIndexOf('.');
         if (dotIndex >= 0) {
             extension = originalFileName
                     .substring(dotIndex + 1)
@@ -257,21 +256,20 @@ public class UploadFileServlet extends HttpServlet {
         try {
             boolean exists
                     = uploadDAO.existsUpload(
-                            studentId, requirementId);
-
+                            studentId,
+                            requirementId);
             boolean saved;
 
             if (exists) {
-                saved
-                        = uploadDAO
-                                .updateFileByStudentAndRequirement(
-                                        studentId,
-                                        requirementId,
-                                        cleanName,
-                                        fileBytes,
-                                        mimeType,
-                                        fileSize,
-                                        user.getUserId());
+                saved = uploadDAO
+                        .updateFileByStudentAndRequirement(
+                                studentId,
+                                requirementId,
+                                cleanName,
+                                fileBytes,
+                                mimeType,
+                                fileSize,
+                                user.getUserId());
             } else {
                 Upload upload = new Upload();
                 upload.setStudentId(
@@ -282,20 +280,19 @@ public class UploadFileServlet extends HttpServlet {
                 upload.setFileContent(fileBytes);
                 upload.setMimeType(mimeType);
                 upload.setFileSize(fileSize);
-
                 saved = uploadDAO.save(upload);
             }
 
             if (saved) {
 
                 /* =========================
-                   ✅ LOG ACTIVITY
-                   (unchanged)
+                   LOG ACTIVITY
                    ========================= */
                 logDAO.log(
                         user.getUserId(),
                         user.getUsername(),
-                        exists ? "REPLACE" : "UPLOAD",
+                        exists ? "REPLACE"
+                                : "UPLOAD",
                         "Uploads",
                         (exists ? "Replaced"
                                 : "Uploaded")
@@ -307,25 +304,18 @@ public class UploadFileServlet extends HttpServlet {
                         + requirementId);
 
                 /* =========================
-                   ✅ EMAIL NOTIFICATIONS
-                   Wrapped in try-catch so
-                   email failure NEVER crashes
-                   the upload
+                   EMAIL NOTIFICATIONS
                    ========================= */
                 try {
-
-                    // Fetch student
                     Student student
                             = studentDAO
                                     .getStudentById(
                                             studentId);
 
-                    // Fetch all requirements
                     List<RequirementType> allRequirements
                             = requirementDAO
                                     .getAllRequirements();
 
-                    // Find requirement name
                     String requirementName
                             = "Requirement #"
                             + requirementId;
@@ -341,14 +331,14 @@ public class UploadFileServlet extends HttpServlet {
 
                     SimpleDateFormat dtf
                             = new SimpleDateFormat(
-                                    "MMM dd, yyyy hh:mm a");
+                                    "MMM dd, yyyy"
+                                    + " hh:mm a");
                     String uploadedAt
                             = dtf.format(new Date());
 
                     /* =====================
                        EMAIL 1
-                       ✅ Notify admin
-                       every file upload
+                       Notify admin
                        ===================== */
                     EmailUtil.sendFileUploaded(
                             ADMIN_EMAIL,
@@ -363,23 +353,23 @@ public class UploadFileServlet extends HttpServlet {
 
                     /* =====================
                        EMAIL 2
-                       ✅ Notify student
-                       ONLY if just completed
+                       Notify student if
+                       just completed
+                       ✅ FIXED — Uses
+                       AppConfig!
                        ===================== */
                     if (student != null
                             && student.getEmail()
                             != null
                             && !student.getEmail()
-                                    .trim().isEmpty()) {
+                                    .trim()
+                                    .isEmpty()) {
 
-                        // Get fresh uploads
-                        // after this save
                         List<Upload> currentUploads
                                 = uploadDAO
                                         .getUploadsByStudent(
                                                 studentId);
 
-                        // Count submitted
                         int submittedCount = 0;
                         for (RequirementType r
                                 : allRequirements) {
@@ -396,24 +386,22 @@ public class UploadFileServlet extends HttpServlet {
                         }
 
                         int total
-                                = allRequirements.size();
+                                = allRequirements
+                                        .size();
                         boolean isComplete
                                 = total > 0
                                 && submittedCount
                                 >= total;
 
-                        // ✅ Only email
-                        // if JUST completed
                         if (isComplete) {
-
+                            // ✅ FIXED — Uses
+                            // AppConfig, no
+                            // double context path!
                             String verifyUrl
-                                    = "https://"
-                                    + LOCAL_IP
-                                    + ":"
-                                    + LOCAL_PORT
-                                    + request
-                                            .getContextPath()
-                                    + "/verify";
+                                    = AppConfig
+                                            .getBaseUrl(
+                                                    request)
+                                    + "verify";
 
                             EmailUtil
                                     .sendSubmissionComplete(
@@ -429,7 +417,6 @@ public class UploadFileServlet extends HttpServlet {
                     }
 
                 } catch (Exception emailEx) {
-                    // ✅ Log but never crash
                     System.err.println(
                             "[EMAIL] ⚠️ Failed: "
                             + emailEx.getMessage());
@@ -460,7 +447,8 @@ public class UploadFileServlet extends HttpServlet {
        ========================= */
     private String extractFileName(Part part) {
         String contentDisp
-                = part.getHeader("content-disposition");
+                = part.getHeader(
+                        "content-disposition");
         if (contentDisp == null) {
             return null;
         }

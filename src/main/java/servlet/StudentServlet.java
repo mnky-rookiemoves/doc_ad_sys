@@ -42,12 +42,11 @@ public class StudentServlet extends HttpServlet {
     private final ActivityLogDAO logDAO
             = new ActivityLogDAO();
 
-    /* =========================
-       ✅ LOCAL IP CONFIGURATION
-       Same as other servlets
-       ========================= */
+    // ✅ LOCAL_IP and LOCAL_PORT REMOVED!
+    // AppConfig.getBaseUrl(request) handles
+    // URLs dynamically for both local & Railway!
 
- /* =========================
+    /* =========================
        DISPLAY STUDENTS
        ========================= */
     @Override
@@ -56,7 +55,6 @@ public class StudentServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        // ===== AUTH =====
         HttpSession session
                 = request.getSession(false);
         User currentUser = (session != null)
@@ -71,7 +69,6 @@ public class StudentServlet extends HttpServlet {
             return;
         }
 
-        // ===== DELETE HANDLER =====
         String action
                 = request.getParameter("action");
         if ("delete".equals(action)) {
@@ -79,7 +76,6 @@ public class StudentServlet extends HttpServlet {
             return;
         }
 
-        // ===== PARAMETERS =====
         String search
                 = request.getParameter("search");
 
@@ -96,7 +92,6 @@ public class StudentServlet extends HttpServlet {
             }
         }
 
-        // ===== PAGINATION DEFAULTS =====
         int pageSize = 10;
         int currentPage = 1;
 
@@ -125,14 +120,12 @@ public class StudentServlet extends HttpServlet {
         } catch (Exception ignored) {
         }
 
-        // ===== DETERMINE FILTER MODE =====
         boolean hasSearch = (search != null
                 && !search.trim().isEmpty());
         boolean hasCategory = (categoryId != null);
         boolean isFiltering
                 = hasSearch || hasCategory;
 
-        // ===== COUNT TOTAL =====
         int totalStudents;
         if (isFiltering) {
             totalStudents
@@ -143,7 +136,6 @@ public class StudentServlet extends HttpServlet {
                     = studentDAO.getTotalStudentCount();
         }
 
-        // ===== PAGINATION CALC =====
         int totalPages = (int) Math.ceil(
                 (double) totalStudents / pageSize);
         if (totalPages == 0) {
@@ -159,7 +151,6 @@ public class StudentServlet extends HttpServlet {
         int endRow = Math.min(
                 offset + pageSize, totalStudents);
 
-        // ===== FETCH DATA =====
         List<Student> students;
         if (isFiltering) {
             students = studentDAO.searchStudents(
@@ -171,11 +162,9 @@ public class StudentServlet extends HttpServlet {
                             currentPage, pageSize);
         }
 
-        // ===== LOAD CATEGORIES =====
         List<StudentCategory> categories
                 = categoryDAO.getAllCategories();
 
-        // ===== SET ATTRIBUTES =====
         request.setAttribute(
                 "studentList", students);
         request.setAttribute(
@@ -238,11 +227,9 @@ public class StudentServlet extends HttpServlet {
         if ("update".equals(action)) {
             handleUpdate(
                     request, response, currentUser);
-
         } else if ("save".equals(action)) {
             handleSave(
                     request, response, currentUser);
-
         } else {
             response.sendRedirect(
                     request.getContextPath()
@@ -266,16 +253,12 @@ public class StudentServlet extends HttpServlet {
             String categoryStr
                     = request.getParameter("categoryId");
 
-            /* =====================
-               VALIDATION
-               ===================== */
             if (name == null
                     || name.trim().isEmpty()
                     || email == null
                     || email.trim().isEmpty()
                     || categoryStr == null
-                    || categoryStr.trim()
-                            .isEmpty()) {
+                    || categoryStr.trim().isEmpty()) {
 
                 response.sendRedirect(
                         request.getContextPath()
@@ -284,9 +267,6 @@ public class StudentServlet extends HttpServlet {
                 return;
             }
 
-            /* =====================
-               BIRTHDATE
-               ===================== */
             Date birthDate = null;
             String birthStr
                     = request.getParameter("birthDate");
@@ -296,9 +276,6 @@ public class StudentServlet extends HttpServlet {
                         = Date.valueOf(birthStr.trim());
             }
 
-            /* =====================
-               BUILD STUDENT
-               ===================== */
             int categoryId = Integer.parseInt(
                     categoryStr.trim());
 
@@ -310,17 +287,11 @@ public class StudentServlet extends HttpServlet {
                     request.getParameter("phone")
             );
 
-            /* =====================
-               SAVE
-               ===================== */
             boolean saved
                     = studentDAO.createStudent(s);
 
             if (saved) {
 
-                /* ===================
-                   ✅ LOG ACTIVITY
-                   =================== */
                 logDAO.log(
                         user.getUserId(),
                         user.getUsername(),
@@ -331,44 +302,37 @@ public class StudentServlet extends HttpServlet {
                         + " | Email: "
                         + email.trim());
 
-                /* ===================
-                   ✅ WELCOME EMAIL
-                   Notify student on
-                   record creation
-                   =================== */
                 try {
                     if (email != null
-                            && !email.trim()
-                                    .isEmpty()) {
+                            && !email.trim().isEmpty()) {
 
-                        // Category name
                         String catName = "—";
                         StudentCategory cat
                                 = categoryDAO.getById(
                                         categoryId);
                         if (cat != null) {
-                            catName
-                                    = cat.getCategoryName();
+                            catName = cat.getCategoryName();
                         }
 
-                        // Requirement names
                         List<RequirementType> reqs
                                 = requirementDAO
                                         .getAllRequirements();
                         List<String> reqNames
                                 = new java.util.ArrayList<>();
-                        for (RequirementType r
-                                : reqs) {
+                        for (RequirementType r : reqs) {
                             reqNames.add(
                                     r.getRequirementName());
                         }
 
+                        // ✅ FIXED — Uses AppConfig!
                         EmailUtil.sendStudentWelcome(
                                 email.trim(),
                                 name.trim(),
                                 catName,
                                 reqNames,
-                                AppConfig.getBaseUrl(request) + "uploads?studentId=" + s.getStudentId()
+                                AppConfig.getBaseUrl(request)
+                                + "uploads?studentId="
+                                + s.getStudentId()
                         );
                     }
                 } catch (Exception emailEx) {
@@ -408,14 +372,12 @@ public class StudentServlet extends HttpServlet {
                         + "A+student+with+the+same+"
                         + "name+and+birthdate+"
                         + "already+exists.");
-
             } else if (isBadDate) {
                 response.sendRedirect(
                         request.getContextPath()
                         + "/students?error="
                         + "Invalid+date+format.+"
                         + "Please+use+YYYY-MM-DD.");
-
             } else {
                 e.printStackTrace();
                 response.sendRedirect(
@@ -454,17 +416,10 @@ public class StudentServlet extends HttpServlet {
                         = Date.valueOf(birthStr.trim());
             }
 
-            /* =====================
-               ✅ GET OLD DATA FIRST
-               For email comparison
-               ===================== */
             Student oldStudent
                     = studentDAO.getStudentById(
                             studentId);
 
-            /* =====================
-               BUILD UPDATED STUDENT
-               ===================== */
             Student s = new Student(
                     studentId, user.getUserId(),
                     name.trim(), birthDate,
@@ -478,9 +433,6 @@ public class StudentServlet extends HttpServlet {
 
             if (updated) {
 
-                /* ===================
-                   ✅ LOG ACTIVITY
-                   =================== */
                 logDAO.log(
                         user.getUserId(),
                         user.getUsername(),
@@ -492,16 +444,10 @@ public class StudentServlet extends HttpServlet {
                         + " | Email: "
                         + email.trim());
 
-                /* ===================
-                   ✅ EMAIL NOTIFICATION
-                   Only if category or
-                   email changed
-                   =================== */
                 try {
                     if (oldStudent != null
                             && email != null
-                            && !email.trim()
-                                    .isEmpty()) {
+                            && !email.trim().isEmpty()) {
 
                         boolean categoryChanged
                                 = oldStudent.getCategoryId()
@@ -514,7 +460,6 @@ public class StudentServlet extends HttpServlet {
                                         .equalsIgnoreCase(
                                                 email.trim());
 
-                        // ✅ Category changed
                         if (categoryChanged) {
 
                             String newCatName = "—";
@@ -523,8 +468,7 @@ public class StudentServlet extends HttpServlet {
                                             categoryId);
                             if (newCat != null) {
                                 newCatName
-                                        = newCat
-                                                .getCategoryName();
+                                        = newCat.getCategoryName();
                             }
 
                             String oldCatName = "—";
@@ -534,26 +478,21 @@ public class StudentServlet extends HttpServlet {
                                                     .getCategoryId());
                             if (oldCat != null) {
                                 oldCatName
-                                        = oldCat
-                                                .getCategoryName();
+                                        = oldCat.getCategoryName();
                             }
 
-                            EmailUtil
-                                    .sendCategoryUpdated(
-                                            email.trim(),
-                                            name.trim(),
-                                            oldCatName,
-                                            newCatName);
+                            EmailUtil.sendCategoryUpdated(
+                                    email.trim(),
+                                    name.trim(),
+                                    oldCatName,
+                                    newCatName);
                         }
 
-                        // ✅ Email changed
                         if (emailChanged) {
-                            EmailUtil
-                                    .sendEmailChanged(
-                                            oldStudent
-                                                    .getEmail(),
-                                            name.trim(),
-                                            email.trim());
+                            EmailUtil.sendEmailChanged(
+                                    oldStudent.getEmail(),
+                                    name.trim(),
+                                    email.trim());
                         }
                     }
 

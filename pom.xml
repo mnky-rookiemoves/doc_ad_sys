@@ -258,6 +258,14 @@
             <version>${javamail.version}</version>
         </dependency>
 
+        <!-- ✅ SendGrid Email API -->
+        <dependency>
+            <groupId>com.sendgrid</groupId>
+            <artifactId>sendgrid-java</artifactId>
+            <version>4.10.2</version>
+        </dependency>
+
+
     </dependencies>
 
     <!-- =========================

@@ -33,6 +33,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import kyrie.AppConfig;
 import model.RequirementType;
 import model.Student;
 import model.StudentCategory;
@@ -73,7 +74,8 @@ public class StudentPDFServlet extends HttpServlet {
             = Color.WHITE;
 
     @Override
-    protected void doGet(HttpServletRequest request,
+    protected void doGet(
+            HttpServletRequest request,
             HttpServletResponse response)
             throws ServletException, IOException {
 
@@ -109,14 +111,15 @@ public class StudentPDFServlet extends HttpServlet {
         }
 
         try {
-            int studentId
-                    = Integer.parseInt(studentIdParam);
+            int studentId = Integer.parseInt(
+                    studentIdParam);
 
             /* =========================
                FETCH STUDENT
                ========================= */
             Student student
-                    = studentDAO.getStudentById(studentId);
+                    = studentDAO.getStudentById(
+                            studentId);
 
             if (student == null) {
                 response.sendRedirect(
@@ -160,19 +163,17 @@ public class StudentPDFServlet extends HttpServlet {
                 }
             }
 
-            // ✅ Cap at total
             int safeSubmitted = Math.min(
                     submittedCount,
                     requirements.size());
 
             boolean isComplete
                     = !requirements.isEmpty()
-                    && safeSubmitted >= requirements.size();
+                    && safeSubmitted
+                    >= requirements.size();
 
             /* =========================
                REFERENCE NUMBER
-               ✅ Reuse from session
-               (set by StudentPrintServlet)
                ========================= */
             String refNo = (String) session
                     .getAttribute(
@@ -199,20 +200,19 @@ public class StudentPDFServlet extends HttpServlet {
                     = dtf.format(printedAt);
 
             /* =========================
-            QR CODE
-            ✅ Uses LOCAL IP so phone
-            can scan on same Wi-Fi
-            ✅ No internet needed
-            ✅ Perfect for LAN / defense
-            ========================= */
-            String verifyUrl
-                    = "http://192.168.95.174:8081"
-                    + request.getContextPath()
-                    + "/verify?ref=" + refNo;
+               QR CODE
+               ✅ FIXED — No double
+               context path!
+               ========================= */
+            String baseUrl
+                    = AppConfig.getBaseUrl(request)
+                    + "verify?ref=" + refNo;
+            // ✅ Removed duplicate
+            // getContextPath()!
 
             String qrBase64
                     = QRCodeUtil.generateBase64QRCode(
-                            verifyUrl, 110);
+                            baseUrl, 110);
 
             /* =========================
                PDF SETUP
@@ -228,10 +228,8 @@ public class StudentPDFServlet extends HttpServlet {
 
             OutputStream out
                     = response.getOutputStream();
-
             Document doc = new Document(
                     PageSize.A4);
-
             PdfWriter.getInstance(doc, out);
             doc.open();
 
@@ -267,17 +265,14 @@ public class StudentPDFServlet extends HttpServlet {
                     FontFactory.COURIER_BOLD,
                     10, MAROON);
 
-            // CENTER: Campus
             /* =========================
-                ✅ REF NO BOX — 2 columns
-                Matches student-print.jsp exactly
-                ========================= */
+               REF NO BOX
+               ========================= */
             PdfPTable refTable = new PdfPTable(
                     new float[]{1.5f, 1.5f});
             refTable.setWidthPercentage(100);
             refTable.setSpacingAfter(4);
 
-            // ✅ LEFT CELL — Reference No
             PdfPCell refCell = new PdfPCell();
             refCell.setBorder(Rectangle.BOX);
             refCell.setPadding(8);
@@ -286,19 +281,20 @@ public class StudentPDFServlet extends HttpServlet {
             Paragraph refLabel = new Paragraph(
                     "Reference No:",
                     FontFactory.getFont(
-                            FontFactory.HELVETICA_BOLD, 9));
+                            FontFactory.HELVETICA_BOLD,
+                            9));
             refLabel.setSpacingAfter(3);
 
             Paragraph refValue = new Paragraph(
                     refNo,
                     FontFactory.getFont(
-                            FontFactory.COURIER_BOLD, 12, MAROON));
+                            FontFactory.COURIER_BOLD,
+                            12, MAROON));
 
             refCell.addElement(refLabel);
             refCell.addElement(refValue);
             refTable.addCell(refCell);
 
-            // ✅ RIGHT CELL — Campus + Printed by + Date
             PdfPCell infoCell = new PdfPCell();
             infoCell.setBorder(Rectangle.BOX);
             infoCell.setPadding(8);
@@ -315,60 +311,60 @@ public class StudentPDFServlet extends HttpServlet {
                     new Color(60, 60, 60));
 
             Paragraph campusPara = new Paragraph();
-            campusPara.setAlignment(Element.ALIGN_RIGHT);
-            campusPara.add(new Chunk("Campus: ", boldSmall));
+            campusPara.setAlignment(
+                    Element.ALIGN_RIGHT);
+            campusPara.add(new Chunk(
+                    "Campus: ", boldSmall));
             campusPara.add(new Chunk(
                     "Sta. Mesa (MN0)", normalSmall));
             campusPara.setSpacingAfter(3);
 
             Paragraph printedPara = new Paragraph();
-            printedPara.setAlignment(Element.ALIGN_RIGHT);
+            printedPara.setAlignment(
+                    Element.ALIGN_RIGHT);
             printedPara.add(new Chunk(
                     "Printed by: ", boldSmall));
             printedPara.add(new Chunk(
-                    currentUser.getUsername(), normalSmall));
+                    currentUser.getUsername(),
+                    normalSmall));
             printedPara.add(new Chunk(
                     "  |  ", normalSmall));
-            printedPara.add(new Chunk("Date: ", boldSmall));
+            printedPara.add(new Chunk(
+                    "Date: ", boldSmall));
             printedPara.add(new Chunk(
                     formattedDate, normalSmall));
 
             infoCell.addElement(campusPara);
             infoCell.addElement(printedPara);
             refTable.addCell(infoCell);
-
             doc.add(refTable);
 
             /* =========================
-               ✅ ROW 2 — TITLE + QR
+               TITLE + QR HEADER
                ========================= */
- /* =========================
-                ✅ TITLE + QR HEADER
-                ========================= */
-            // ✅ Bigger font to match HTML
             Font titleFontLarge = FontFactory.getFont(
-                    FontFactory.HELVETICA_BOLD, 20, MAROON);
+                    FontFactory.HELVETICA_BOLD,
+                    20, MAROON);
 
-            PdfPTable header
-                    = new PdfPTable(new float[]{3f, 1f});
+            PdfPTable header = new PdfPTable(
+                    new float[]{3f, 1f});
             header.setWidthPercentage(100);
             header.setSpacingAfter(10);
 
-            // ✅ LEFT — Title with more padding
             PdfPCell titleCell = new PdfPCell();
             titleCell.setBorder(Rectangle.BOX);
-            titleCell.setPadding(14); // ✅ matches HTML padding
+            titleCell.setPadding(14);
             titleCell.setVerticalAlignment(
                     Element.ALIGN_MIDDLE);
 
             Paragraph titlePara = new Paragraph(
                     "Student Submission Report",
                     titleFontLarge);
-            titlePara.setAlignment(Element.ALIGN_LEFT);
+            titlePara.setAlignment(
+                    Element.ALIGN_LEFT);
             titleCell.addElement(titlePara);
             header.addCell(titleCell);
 
-            // ✅ RIGHT — QR Code
             PdfPCell qrCell = new PdfPCell();
             qrCell.setPadding(10);
             qrCell.setBorder(Rectangle.BOX);
@@ -381,13 +377,14 @@ public class StudentPDFServlet extends HttpServlet {
                     Base64.getDecoder()
                             .decode(qrBase64));
             qrImage.scaleToFit(90, 90);
-            qrImage.setAlignment(Element.ALIGN_CENTER);
+            qrImage.setAlignment(
+                    Element.ALIGN_CENTER);
             qrCell.addElement(qrImage);
             header.addCell(qrCell);
-
             doc.add(header);
+
             /* =========================
-               ✅ STUDENT INFO TABLE
+               STUDENT INFO TABLE
                ========================= */
             PdfPTable info = new PdfPTable(2);
             info.setWidthPercentage(100);
@@ -410,11 +407,10 @@ public class StudentPDFServlet extends HttpServlet {
             addInfoRow(info, "Generated By",
                     currentUser.getUsername(),
                     labelFont, valueFont);
-
             doc.add(info);
 
             /* =========================
-               ✅ REQUIREMENTS STATUS
+               REQUIREMENTS STATUS
                ========================= */
             Paragraph reqTitle = new Paragraph(
                     "Requirements Status",
@@ -426,14 +422,12 @@ public class StudentPDFServlet extends HttpServlet {
             reqTitle.setSpacingAfter(4);
             doc.add(reqTitle);
 
-            PdfPTable reqTable
-                    = new PdfPTable(3);
+            PdfPTable reqTable = new PdfPTable(3);
             reqTable.setWidthPercentage(100);
             reqTable.setWidths(
                     new float[]{0.5f, 3f, 1.5f});
             reqTable.setSpacingAfter(8);
 
-            // Table headers
             String[] headers = {
                 "#", "Requirement", "Status"};
             for (String h : headers) {
@@ -445,7 +439,6 @@ public class StudentPDFServlet extends HttpServlet {
                 reqTable.addCell(hc);
             }
 
-            // Table rows
             int rowNum = 1;
             for (RequirementType r : requirements) {
 
@@ -453,7 +446,8 @@ public class StudentPDFServlet extends HttpServlet {
                 for (Upload u : uploads) {
                     if (u.getRequirementId()
                             == r.getRequirementId()
-                            && u.getFileName() != null) {
+                            && u.getFileName()
+                            != null) {
                         ok = true;
                         break;
                     }
@@ -495,14 +489,12 @@ public class StudentPDFServlet extends HttpServlet {
                 statusCell.setBackgroundColor(rowBg);
                 reqTable.addCell(statusCell);
             }
-
             doc.add(reqTable);
 
             /* =========================
-               ✅ COMPLETION STATUS
+               COMPLETION STATUS
                ========================= */
-            Paragraph completion
-                    = new Paragraph();
+            Paragraph completion = new Paragraph();
             completion.setAlignment(
                     Element.ALIGN_CENTER);
             completion.add(new Chunk(
@@ -520,30 +512,29 @@ public class StudentPDFServlet extends HttpServlet {
             completion.setSpacingAfter(2);
             doc.add(completion);
 
-            Paragraph submittedPara
-                    = new Paragraph(
-                            "Submitted "
-                            + safeSubmitted
-                            + " of "
-                            + requirements.size()
-                            + " requirements.",
-                            valueFont);
+            Paragraph submittedPara = new Paragraph(
+                    "Submitted "
+                    + safeSubmitted
+                    + " of "
+                    + requirements.size()
+                    + " requirements.",
+                    valueFont);
             submittedPara.setAlignment(
                     Element.ALIGN_CENTER);
             submittedPara.setSpacingAfter(16);
             doc.add(submittedPara);
 
             /* =========================
-               ✅ VERIFIED FOOTER
+               VERIFIED FOOTER
                ========================= */
-            PdfPTable verified
-                    = new PdfPTable(1);
+            PdfPTable verified = new PdfPTable(1);
             verified.setWidthPercentage(100);
             verified.setSpacingAfter(14);
 
             PdfPCell vCell = new PdfPCell();
             vCell.setBorder(
-                    Rectangle.TOP | Rectangle.BOTTOM);
+                    Rectangle.TOP
+                    | Rectangle.BOTTOM);
             vCell.setPadding(6);
             vCell.setHorizontalAlignment(
                     Element.ALIGN_CENTER);
@@ -560,8 +551,7 @@ public class StudentPDFServlet extends HttpServlet {
                     + "electronically by the\n"
                     + "VANDAM Document Admission System",
                     verifiedSubFont);
-            vSub.setAlignment(
-                    Element.ALIGN_CENTER);
+            vSub.setAlignment(Element.ALIGN_CENTER);
 
             vCell.addElement(vTitle);
             vCell.addElement(vSub);
@@ -569,8 +559,7 @@ public class StudentPDFServlet extends HttpServlet {
             doc.add(verified);
 
             /* =========================
-               ✅ PRINT META
-               (formatted date — no raw toString)
+               PRINT META
                ========================= */
             doc.add(new Paragraph(
                     "Printed By: "
@@ -581,7 +570,7 @@ public class StudentPDFServlet extends HttpServlet {
                     smallFont));
 
             /* =========================
-               ✅ SIGNATURE
+               SIGNATURE
                ========================= */
             doc.add(new Paragraph(
                     "Prepared by: "
@@ -605,7 +594,8 @@ public class StudentPDFServlet extends HttpServlet {
     /* =========================
        HELPER: INFO ROW
        ========================= */
-    private void addInfoRow(PdfPTable table,
+    private void addInfoRow(
+            PdfPTable table,
             String label,
             String value,
             Font labelFont,

@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import kyrie.AppConfig;
 import model.RequirementType;
 import model.Student;
 import model.StudentCategory;
@@ -28,16 +29,9 @@ public class StudentPrintServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
-    /* =========================
-       ✅ LOCAL IP CONFIGURATION
-       Change IP here if Wi-Fi changes
-       Find via: ipconfig → Wi-Fi IPv4
-       ========================= */
-    private static final String LOCAL_IP
-            = "192.168.95.174";   // ✅ your Wi-Fi IP
-    private static final String LOCAL_PORT
-            = "8443";           // ✅ your Tomcat port
-
+    // ✅ LOCAL IP CONFIGURATION REMOVED!
+    // AppConfig.getBaseUrl(request) handles
+    // URLs dynamically for both local & Railway!
     private final StudentDAO studentDAO
             = new StudentDAO();
     private final RequirementDAO requirementDAO
@@ -50,7 +44,8 @@ public class StudentPrintServlet extends HttpServlet {
             = new PrintLogDAO();
 
     @Override
-    protected void doGet(HttpServletRequest request,
+    protected void doGet(
+            HttpServletRequest request,
             HttpServletResponse response)
             throws ServletException, IOException {
 
@@ -86,14 +81,15 @@ public class StudentPrintServlet extends HttpServlet {
         }
 
         try {
-            int studentId
-                    = Integer.parseInt(studentIdParam);
+            int studentId = Integer.parseInt(
+                    studentIdParam);
 
             /* =========================
                FETCH STUDENT
                ========================= */
             Student student
-                    = studentDAO.getStudentById(studentId);
+                    = studentDAO.getStudentById(
+                            studentId);
 
             if (student == null) {
                 response.sendRedirect(
@@ -104,16 +100,17 @@ public class StudentPrintServlet extends HttpServlet {
 
             /* =========================
                GENERATE REFERENCE NUMBER
-               Format: VDM-YYYYMMDD-S023-MN0-XXXXXXX
                ✅ Generated ONCE
-               ✅ Stored in session for PDF reuse
+               ✅ Stored in session for
+               PDF reuse
                ========================= */
-            String refNo = printLogDAO.savePrintLog(
-                    studentId,
-                    currentUser.getUserId(),
-                    currentUser.getUsername(),
-                    "STUDENT_REPORT"
-            );
+            String refNo
+                    = printLogDAO.savePrintLog(
+                            studentId,
+                            currentUser.getUserId(),
+                            currentUser.getUsername(),
+                            "STUDENT_REPORT"
+                    );
 
             // ✅ Store in session for PDF reuse
             request.getSession().setAttribute(
@@ -129,24 +126,24 @@ public class StudentPrintServlet extends HttpServlet {
                     = HashUtil.sha256(rawToken);
 
             /* =========================
-               ✅ BUILD VERIFY URL (QR)
-               Uses LOCAL IP so phone can
-               scan QR on same Wi-Fi network.
-               ✅ Works in classroom/defense/LAN
-               ✅ No internet needed
+               BUILD VERIFY URL (QR)
+               ✅ FIXED — No double
+               context path!
+               Works on localhost AND
+               Railway automatically!
                ========================= */
-            String verifyUrl
-                    = "https://" + LOCAL_IP
-                    + ":" + LOCAL_PORT
-                    + request.getContextPath()
-                    + "/verify?ref=" + refNo;
+            String baseUrl
+                    = AppConfig.getBaseUrl(request)
+                    + "verify?ref=" + refNo;
+            // ✅ Removed duplicate
+            // getContextPath()!
 
             /* =========================
                GENERATE QR CODE
                ========================= */
             String qrCodeBase64
                     = QRCodeUtil.generateBase64QRCode(
-                            verifyUrl, 160);
+                            baseUrl, 160);
 
             /* =========================
                FETCH CATEGORY NAME
@@ -179,19 +176,18 @@ public class StudentPrintServlet extends HttpServlet {
                COMPUTE COMPLETION
                ========================= */
             int submittedCount = 0;
-
             for (RequirementType r : requirements) {
                 for (Upload u : uploads) {
                     if (u.getRequirementId()
                             == r.getRequirementId()
-                            && u.getFileName() != null) {
+                            && u.getFileName()
+                            != null) {
                         submittedCount++;
                         break;
                     }
                 }
             }
 
-            // ✅ Cap at total requirements
             int safeSubmitted = Math.min(
                     submittedCount,
                     requirements.size());
@@ -206,38 +202,33 @@ public class StudentPrintServlet extends HttpServlet {
                ========================= */
             Date printedAt = new Date();
 
-            // ✅ Student data
-            request.setAttribute("student",
-                    student);
-            request.setAttribute("categoryName",
-                    categoryName);
-            request.setAttribute("requirements",
-                    requirements);
-            request.setAttribute("uploads",
-                    uploads);
-            request.setAttribute("submittedCount",
-                    safeSubmitted);
-            request.setAttribute("totalRequirements",
+            request.setAttribute(
+                    "student", student);
+            request.setAttribute(
+                    "categoryName", categoryName);
+            request.setAttribute(
+                    "requirements", requirements);
+            request.setAttribute(
+                    "uploads", uploads);
+            request.setAttribute(
+                    "submittedCount", safeSubmitted);
+            request.setAttribute(
+                    "totalRequirements",
                     requirements.size());
-            request.setAttribute("isComplete",
-                    isComplete);
-
-            // ✅ Print metadata
-            request.setAttribute("generatedBy",
+            request.setAttribute(
+                    "isComplete", isComplete);
+            request.setAttribute(
+                    "generatedBy",
                     currentUser.getUsername());
-            request.setAttribute("printedBy",
+            request.setAttribute(
+                    "printedBy",
                     currentUser.getUsername());
-            request.setAttribute("printedAt",
-                    printedAt);
-
-            // ✅ Reference number
-            request.setAttribute("refNo", refNo);
-
-            // ✅ QR code
-            // encodes: http://192.168.95.174:8081/
-            //          doc_ad_sys/verify?ref=VDM-...
-            request.setAttribute("qrCode",
-                    qrCodeBase64);
+            request.setAttribute(
+                    "printedAt", printedAt);
+            request.setAttribute(
+                    "refNo", refNo);
+            request.setAttribute(
+                    "qrCode", qrCodeBase64);
 
             request.getRequestDispatcher(
                     "/student-print.jsp")

@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import kyrie.AppConfig;
 import model.User;
 import util.EmailUtil;
 
@@ -98,6 +99,7 @@ public class TestEmailServlet
             /* =====================
                TEST 2
                Submission Complete
+               ✅ FIXED — Uses AppConfig!
                ===================== */
             EmailUtil.sendSubmissionComplete(
                     toEmail,
@@ -105,23 +107,22 @@ public class TestEmailServlet
                     "VDM-TEST-00000-MN0-0000000",
                     7,
                     7,
-                    ""
-                    + request.getContextPath()
-                    + "/verify?ref="
+                    AppConfig.getBaseUrl(request)
+                    + "verify?ref="
                     + "VDM-TEST-00000-MN0-0000000"
             );
 
             /* =====================
                TEST 3
                Account Created
+               ✅ FIXED — Uses AppConfig!
                ===================== */
             EmailUtil.sendAccountCreated(
                     toEmail,
                     "testuser (TEST)",
                     "Staff",
-                    ""
-                    + request.getContextPath()
-                    + "/login.jsp"
+                    AppConfig.getBaseUrl(request)
+                    + "login.jsp"
             );
 
             /* =====================
