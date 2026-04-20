@@ -17,40 +17,23 @@
 
     <!-- ============== SESSION CONFIGURATION ============== -->
     <session-config>
+        <session-timeout>15</session-timeout>
         <tracking-mode>COOKIE</tracking-mode>
         <cookie-config>
-            <secure>false</secure>
+            <!-- ✅ Set to true since Railway serves HTTPS! -->
+            <secure>true</secure>
             <http-only>true</http-only>
         </cookie-config>
-    
-
-   
-        <!-- Timeout in MINUTES -->
-        <session-timeout>15</session-timeout>
     </session-config>
 
-    
     <!-- ============== ERROR PAGES ============== -->
-    
     <!--
     <error-page>
         <exception-type>java.lang.Exception</exception-type>
         <location>/error.jsp</location>
     </error-page>
     -->
-    <!-- ✅ Force HTTPS redirect -->
-    <security-constraint>
-        <web-resource-collection>
-            <web-resource-name>
-                Secure VANDAM
-            </web-resource-name>
-            <url-pattern>/*</url-pattern>
-        </web-resource-collection>
-        <user-data-constraint>
-            <transport-guarantee>
-                CONFIDENTIAL
-            </transport-guarantee>
-        </user-data-constraint>
-    </security-constraint>
+
+    <!-- ✅ REMOVED security-constraint — Railway handles HTTPS already! -->
 
 </web-app>
