@@ -1,15 +1,15 @@
 package util;
 
-import com.sendgrid.Method;      
+import java.io.IOException;
+import java.util.List;
+
+import com.sendgrid.http.HttpMethod
 import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
-
-import java.io.IOException;
-import java.util.List;
 
 public class EmailUtil {
 
@@ -54,7 +54,8 @@ public class EmailUtil {
                         = new SendGrid(API_KEY);
                 Request request = new Request();
 
-                request.setMethod(Method.POST);
+                // ✅ HttpMethod instead of Method!
+                request.setMethod(HttpMethod.POST);
                 request.setEndpoint("mail/send");
                 request.setBody(mail.build());
 
