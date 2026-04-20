@@ -49,18 +49,12 @@ public class EmailUtil {
                 props.put(
                     "mail.smtp.host",
                     SMTP_HOST);
-                props.put(
-                    "mail.smtp.port",
-                    SMTP_PORT);
-                props.put(
-                    "mail.smtp.auth",
-                    "true");
-                props.put(
-                    "mail.smtp.starttls.enable",
-                    "true");
-                props.put(
-                    "mail.smtp.starttls.required",
-                    "true");
+               
+props.put("mail.smtp.port",              "465");
+props.put("mail.smtp.ssl.enable",        "true");   // ← Add this
+props.put("mail.smtp.starttls.enable",   "false");  // ← Change to false
+props.put("mail.smtp.starttls.required", "false");  // ← Change to false
+props.put("mail.smtp.auth","true");
                 props.put(
                     "mail.smtp.ssl.protocols",
                     "TLSv1.2");
