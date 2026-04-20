@@ -1,7 +1,6 @@
 package dao;
 
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,339 +12,354 @@ import model.Student;
 
 public class StudentDAO {
 
-    public boolean addStudent(Student student) {
-        String sql = "INSERT INTO students (user_id, student_name, birth_date, email, category_id) VALUES (?, ?, ?, ?, ?)";
+    /* =========================
+       MAPPER
+       ========================= */
+    private Student map(ResultSet rs) throws SQLException {
+        return new Student(
+                rs.getInt("student_id"),
+                rs.getInt("user_id"),
+                rs.getString("student_name"),
+                rs.getDate("birth_date"),
+                rs.getString("email"),
+                rs.getInt("category_id"),
+                rs.getString("remarks"),
+                rs.getString("phone")
+        );
+    }
 
-        try (Connection con = DBConnection.getConnection()) {
-            if (con == null) {
-                System.err.println("Database connection is null");
-                return false;
+    /* =========================
+       GET STUDENTS PAGINATED
+       ========================= */
+    public List<Student> getStudentsPaginated(
+            int page, int pageSize) {
+
+        List<Student> list = new ArrayList<>();
+        int offset = (page - 1) * pageSize;
+
+        String sql = """
+            SELECT * FROM students
+            ORDER BY student_id
+            LIMIT ? OFFSET ?
+        """;
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps =
+                con.prepareStatement(sql)) {
+
+            ps.setInt(1, pageSize);
+            ps.setInt(2, offset);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(map(rs));
             }
 
-            try (PreparedStatement ps = con.prepareStatement(sql)) {
-                ps.setInt(1, student.getUserId());
-                ps.setString(2, student.getStudentName());
-
-                if (student.getBirthDate() != null && !student.getBirthDate().isEmpty()) {
-                    ps.setDate(3, Date.valueOf(student.getBirthDate()));
-                } else {
-                    ps.setNull(3, java.sql.Types.DATE);
-                }
-
-                ps.setString(4, student.getEmail());
-                ps.setInt(5, student.getCategoryId());
-
-                int rows = ps.executeUpdate();
-                System.out.println("✓ Student added: " + student.getStudentName());
-                return rows > 0;
-            }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return false;
+        return list;
     }
 
-    public List<Student> getStudents(String search, String searchField, Integer categoryId) {
-        List<Student> students = new ArrayList<>();
-        StringBuilder sql = new StringBuilder();
+    /* =========================
+       SEARCH + FILTER
+       ========================= */
+    public List<Student> searchStudents(
+            String search, Integer categoryId,
+            int page, int pageSize) {
 
-        sql.append("SELECT s.student_id, s.user_id, s.student_name, s.birth_date, s.email, s.category_id, c.category_name ");
-        sql.append("FROM students s ");
-        sql.append("LEFT JOIN student_categories c ON s.category_id = c.category_id ");
-        sql.append("WHERE 1=1 ");
+        List<Student> list = new ArrayList<>();
 
-        boolean hasSearch = (search != null && !search.trim().isEmpty());
-        if (searchField == null || searchField.isEmpty()) {
-            searchField = "all";
+        StringBuilder sql = new StringBuilder(
+            "SELECT * FROM students WHERE 1=1 ");
+
+        if (search != null && !search.trim().isEmpty()) {
+            sql.append(
+                "AND (student_name LIKE ? "
+                + "OR email LIKE ?) ");
         }
 
         if (categoryId != null) {
-            sql.append("AND s.category_id = ? ");
+            sql.append("AND category_id = ? ");
         }
 
-        if (hasSearch) {
-            if ("name".equalsIgnoreCase(searchField)) {
-                sql.append("AND s.student_name LIKE ? ");
-            } else if ("email".equalsIgnoreCase(searchField)) {
-                sql.append("AND s.email LIKE ? ");
-            } else {
-                sql.append("AND (s.student_name LIKE ? OR s.email LIKE ?) ");
-            }
-        }
-
-        sql.append("ORDER BY s.student_id DESC ");
+        sql.append("ORDER BY student_id LIMIT ? OFFSET ?");
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql.toString())) {
+             PreparedStatement ps =
+                con.prepareStatement(sql.toString())) {
 
-            int idx = 1;
+            int i = 1;
+
+            if (search != null
+                    && !search.trim().isEmpty()) {
+                ps.setString(i++, "%" + search + "%");
+                ps.setString(i++, "%" + search + "%");
+            }
 
             if (categoryId != null) {
-                ps.setInt(idx++, categoryId);
+                ps.setInt(i++, categoryId);
             }
 
-            if (hasSearch) {
-                String like = "%" + search.trim() + "%";
-                if ("name".equalsIgnoreCase(searchField)) {
-                    ps.setString(idx++, like);
-                } else if ("email".equalsIgnoreCase(searchField)) {
-                    ps.setString(idx++, like);
-                } else {
-                    ps.setString(idx++, like);
-                    ps.setString(idx++, like);
-                }
+            ps.setInt(i++, pageSize);
+            ps.setInt(i, (page - 1) * pageSize);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(map(rs));
             }
 
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Student s = new Student();
-                    s.setStudentId(rs.getInt("student_id"));
-                    s.setUserId(rs.getInt("user_id"));
-                    s.setStudentName(rs.getString("student_name"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-                    Date bd = rs.getDate("birth_date");
-                    if (bd != null) s.setBirthDate(bd.toString());
+        return list;
+    }
 
-                    s.setEmail(rs.getString("email"));
-                    s.setCategoryId(rs.getInt("category_id"));
-                    s.setCategoryName(rs.getString("category_name"));
+    /* =========================
+       COUNT FILTERED
+       ========================= */
+    public int countSearchStudents(
+            String search, Integer categoryId) {
 
-                    students.add(s);
-                }
+        StringBuilder sql = new StringBuilder(
+            "SELECT COUNT(*) FROM students WHERE 1=1 ");
+
+        if (search != null && !search.trim().isEmpty()) {
+            sql.append(
+                "AND (student_name LIKE ? "
+                + "OR email LIKE ?) ");
+        }
+
+        if (categoryId != null) {
+            sql.append("AND category_id = ? ");
+        }
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps =
+                con.prepareStatement(sql.toString())) {
+
+            int i = 1;
+
+            if (search != null
+                    && !search.trim().isEmpty()) {
+                ps.setString(i++, "%" + search + "%");
+                ps.setString(i++, "%" + search + "%");
             }
+
+            if (categoryId != null) {
+                ps.setInt(i++, categoryId);
+            }
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
+    /* =========================
+       TOTAL COUNT
+       ========================= */
+    public int getTotalStudentCount() {
+
+        String sql = "SELECT COUNT(*) FROM students";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps =
+                con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) return rs.getInt(1);
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
-        return students;
+        return 0;
     }
 
-    public Student getStudentById(int studentId) {
-        String sql = "SELECT s.*, c.category_name FROM students s " +
-                     "LEFT JOIN student_categories c ON s.category_id = c.category_id " +
-                     "WHERE s.student_id = ?";
+    /* =========================
+       GET BY ID
+       ========================= */
+    public Student getStudentById(int id) {
+
+        String sql =
+            "SELECT * FROM students "
+            + "WHERE student_id = ?";
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps =
+                con.prepareStatement(sql)) {
 
-            ps.setInt(1, studentId);
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Student s = new Student();
-                    s.setStudentId(rs.getInt("student_id"));
-                    s.setUserId(rs.getInt("user_id"));
-                    s.setStudentName(rs.getString("student_name"));
-                    s.setBirthDate(rs.getString("birth_date"));
-                    s.setEmail(rs.getString("email"));
-                    s.setCategoryId(rs.getInt("category_id"));
-                    s.setCategoryName(rs.getString("category_name"));
-                    return s;
-                }
-            }
-        } catch (SQLException e) {
+            if (rs.next()) return map(rs);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
         return null;
     }
 
-    public boolean updateStudent(Student s) {
-        String sql = "UPDATE students SET student_name=?, birth_date=?, email=?, category_id=? WHERE student_id=?";
+    /* =========================
+       CREATE STUDENT
+       ✅ FIXED — throws RuntimeException
+       with "DUPLICATE_STUDENT" message
+       so servlet can detect it cleanly
+       ========================= */
+    public boolean createStudent(Student s) {
+
+        String sql = """
+            INSERT INTO students
+            (user_id, student_name, birth_date,
+             email, category_id, remarks, phone)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """;
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps =
+                con.prepareStatement(sql)) {
+
+            ps.setObject(1, s.getUserId());
+            ps.setString(2, s.getStudentName());
+            ps.setDate(3, s.getBirthDate());
+            ps.setString(4, s.getEmail());
+            ps.setObject(5, s.getCategoryId());
+            ps.setString(6, s.getRemarks());
+            ps.setString(7, s.getPhone());
+
+            return ps.executeUpdate() > 0;
+
+        } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+            // ✅ Duplicate name + birthdate detected
+            throw new RuntimeException(
+                "DUPLICATE_STUDENT", e);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    /* =========================
+       UPDATE STUDENT
+       ========================= */
+    public boolean updateStudent(Student s) {
+
+        String sql = """
+            UPDATE students
+            SET student_name=?, birth_date=?,
+                email=?, category_id=?,
+                remarks=?, phone=?
+            WHERE student_id=?
+        """;
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps =
+                con.prepareStatement(sql)) {
 
             ps.setString(1, s.getStudentName());
-            ps.setString(2, s.getBirthDate());
+            ps.setDate(2, s.getBirthDate());
             ps.setString(3, s.getEmail());
-            ps.setInt(4, s.getCategoryId());
-            ps.setInt(5, s.getStudentId());
+            ps.setObject(4, s.getCategoryId());
+            ps.setString(5, s.getRemarks());
+            ps.setString(6, s.getPhone());
+            ps.setInt(7, s.getStudentId());
 
-            System.out.println("✓ Student updated: " + s.getStudentName());
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
         return false;
     }
 
-    public boolean deleteStudent(int studentId) {
-        String sql = "DELETE FROM students WHERE student_id=?";
-
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            ps.setInt(1, studentId);
-            System.out.println("✓ Student deleted: ID " + studentId);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
+    /* =========================
+       GET ALL STUDENTS
+       ========================= */
     public List<Student> getAllStudents() {
-        return getStudents(null, "all", null);
-    }
 
-    // ============ PHASE 2 METHODS (For Future Use) ============
+        List<Student> list = new ArrayList<>();
 
-    /**
-     * Get count of incomplete documents for a specific student
-     * @param studentId Student ID
-     * @return Count of incomplete documents
-     */
-    public int getIncompleteDocumentsCount(int studentId) {
-        String sql = "SELECT COUNT(*) as incomplete_count " +
-                     "FROM student_requirements " +
-                     "WHERE student_id = ? AND (status IS NULL OR status != 'approved')";
+        String sql =
+            "SELECT * FROM students "
+            + "ORDER BY student_id";
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps =
+                con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
-            ps.setInt(1, studentId);  // ✅ FIXED: Use setInt
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("incomplete_count");
-                }
+            while (rs.next()) {
+                list.add(map(rs));
             }
-        } catch (SQLException e) {
-            System.err.println("Error getting incomplete documents count for student " + studentId);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return 0;
+        return list;
     }
 
-    /**
-     * Get total count of documents required/submitted for a student
-     * @param studentId Student ID
-     * @return Total document count
-     */
-    public int getTotalDocumentsCount(int studentId) {
-        String sql = "SELECT COUNT(*) as total_count " +
-                     "FROM student_requirements " +
-                     "WHERE student_id = ?";
+    /* =========================
+       DELETE STUDENT
+       ========================= */
+    public boolean deleteStudent(int id) {
+
+        String sql =
+            "DELETE FROM students "
+            + "WHERE student_id=?";
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps =
+                con.prepareStatement(sql)) {
 
-            ps.setInt(1, studentId);  // ✅ FIXED: Use setInt
+            ps.setInt(1, id);
+            return ps.executeUpdate() > 0;
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("total_count");
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting total documents count for student " + studentId);
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return 0;
+        return false;
     }
 
-    /**
-     * Get document completion percentage for a student
-     * @param studentId Student ID
-     * @return Percentage of completed documents (0-100)
-     */
-    public int getDocumentCompletionPercentage(int studentId) {
-        int total = getTotalDocumentsCount(studentId);
-        if (total == 0) return 0;
+        /* =========================
+    UPDATE STUDENT CATEGORY
+    Used by BatchCategoryServlet
+    ========================= */
+    public boolean updateCategory(
+            int studentId,
+            int categoryId) {
 
-        int approved = getApprovedDocumentsCount(studentId);
-        return (approved * 100) / total;
-    }
+        String sql =
+            "UPDATE students "
+            + "SET category_id = ? "
+            + "WHERE student_id = ?";
 
-    /**
-     * Get count of approved documents for a student
-     * @param studentId Student ID
-     * @return Count of approved documents
-     */
-    public int getApprovedDocumentsCount(int studentId) {
-        String sql = "SELECT COUNT(*) as approved_count " +
-                     "FROM student_requirements " +
-                     "WHERE student_id = ? AND status = 'approved'";
+        try (Connection con =
+                DBConnection.getConnection();
+            PreparedStatement ps =
+                con.prepareStatement(sql)) {
 
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, categoryId);
+            ps.setInt(2, studentId);
 
-            ps.setInt(1, studentId);  // ✅ FIXED: Use setInt
+            return ps.executeUpdate() > 0;
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("approved_count");
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting approved documents count for student " + studentId);
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return 0;
-    }
-
-    /**
-     * Get total count of students with at least one incomplete document
-     * @return Count of students with incomplete documents
-     */
-    public int getTotalStudentsWithIncompleteDocuments() {
-        String sql = "SELECT COUNT(DISTINCT s.student_id) as incomplete_students " +
-                     "FROM students s " +
-                     "INNER JOIN student_requirements sr ON s.student_id = sr.student_id " +
-                     "WHERE sr.status IS NULL OR sr.status != 'approved'";
-
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("incomplete_students");
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error getting total students with incomplete documents");
-            e.printStackTrace();
-        }
-
-        return 0;
-    }
-
-    /**
-     * Get all students sorted by document completion status
-     * @return List of students with document status info
-     */
-    public List<Student> getStudentsWithDocumentStatus(String search, String searchField, Integer categoryId) {
-        List<Student> students = getStudents(search, searchField, categoryId);
-
-        // Enrich each student with document status
-        for (Student s : students) {
-            int total = getTotalDocumentsCount(s.getStudentId());
-            int incomplete = getIncompleteDocumentsCount(s.getStudentId());
-            s.setTotalDocuments(total);
-            s.setIncompleteDocuments(incomplete);
-            s.setCompletionPercentage(getDocumentCompletionPercentage(s.getStudentId()));
-        }
-
-        return students;
-    }
-
-    /**
-     * Get document status details for a specific student
-     * @param studentId Student ID
-     * @return Array: [totalDocuments, approvedDocuments, incompleteDocuments]
-     */
-    public int[] getStudentDocumentStatusArray(int studentId) {
-        int total = getTotalDocumentsCount(studentId);
-        int approved = getApprovedDocumentsCount(studentId);
-        int incomplete = total - approved;
-
-        return new int[]{total, approved, incomplete};
+        return false;
     }
 }

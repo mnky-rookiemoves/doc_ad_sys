@@ -1,19 +1,49 @@
 package model;
 
 public class RequirementType {
-    private Integer typeId;
-    private String typeName;
 
+    private int requirementId;
+    private String requirementName;
+    private String description;
+
+    // Default constructor
     public RequirementType() {}
-
-    public RequirementType(Integer typeId, String typeName) {
-        this.typeId = typeId;
-        this.typeName = typeName;
+    
+    @Override
+    public String toString() {
+        return requirementName + " (" + description + ")";
     }
 
-    public Integer getTypeId() { return typeId; }
-    public void setTypeId(Integer typeId) { this.typeId = typeId; }
+    // Full constructor
+    public RequirementType(int requirementId, String requirementName, String description) {
+        this.requirementId = requirementId;
+        this.requirementName = requirementName;
+        this.description = description;
+    }
 
-    public String getTypeName() { return typeName; }
-    public void setTypeName(String typeName) { this.typeName = typeName; }
+    // GETTERS
+    public int getRequirementId() {
+        return requirementId;
+    }
+
+    public String getRequirementName() {
+        return requirementName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    // SETTERS
+    public void setRequirementId(int requirementId) {
+        this.requirementId = requirementId;
+    }
+
+    public void setRequirementName(String requirementName) {
+        this.requirementName = requirementName;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }
