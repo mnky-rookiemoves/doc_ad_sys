@@ -5,19 +5,46 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBConnection {
-    private static final String URL = "jdbc:mysql://localhost:3306/doc_admission_db?allowMultiQueries=true&autoReconnect=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-    private static final String USER = "root";
-    private static final String PASSWORD = "NewPassword123!";
 
+    // ── Railway Environment Variables ──────────────────────────────
+    private static final String HOST     = System.getenv("MYSQLHOST")     != null ? System.getenv("MYSQLHOST")     : "localhost";
+    private static final String PORT     = System.getenv("MYSQLPORT")     != null ? System.getenv("MYSQLPORT")     : "3306";
+    private static final String DATABASE = System.getenv("MYSQLDATABASE") != null ? System.getenv("MYSQLDATABASE") : "doc_admission_db";
+    private static final String USER     = System.getenv("MYSQLUSER")     != null ? System.getenv("MYSQLUSER")     : "root";
+    private static final String PASSWORD = System.getenv("MYSQLPASSWORD") != null ? System.getenv("MYSQLPASSWORD") : "NewPassword123!";
+
+    // ── Build Connection URL ────────────────────────────────────────
+    private static final String URL =
+        "jdbc:mysql://" + HOST + ":" + PORT + "/" + DATABASE
+        + "?allowMultiQueries=true"
+        + "&autoReconnect=true"
+        + "&useSSL=false"
+        + "&serverTimezone=UTC"
+        + "&allowPublicKeyRetrieval=true";
+
+    // ── Load MySQL Driver ───────────────────────────────────────────
     static {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
+            System.err.println("[DBConnection] ❌ MySQL Driver not found: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
+    // ── Get Connection ──────────────────────────────────────────────
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+        try {
+            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            return conn;
+        } catch (SQLException e) {
+            System.err.println("[DBConnection] ❌ Failed to connect to database!");
+            System.err.println("  HOST     : " + HOST);
+            System.err.println("  PORT     : " + PORT);
+            System.err.println("  DATABASE : " + DATABASE);
+            System.err.println("  USER     : " + USER);
+            System.err.println("  URL      : " + URL);
+            throw e;
+        }
     }
 }
