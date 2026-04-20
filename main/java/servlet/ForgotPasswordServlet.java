@@ -12,6 +12,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kyrie.AppConfig;
 import model.User;
 import util.EmailUtil;
 
@@ -27,13 +28,8 @@ public class ForgotPasswordServlet
     private final PasswordResetDAO resetDAO
             = new PasswordResetDAO();
 
-    /* =========================
-       LOCAL IP
-       ========================= */
-    private static final String LOCAL_IP
-            = "192.168.95.174";
-    private static final String LOCAL_PORT
-            = "8443";
+    // ✅ REMOVED LOCAL_IP and LOCAL_PORT!
+    // AppConfig handles URL dynamically now!
 
     /* =========================
        GET — Show form
@@ -93,12 +89,11 @@ public class ForgotPasswordServlet
                     token,
                     expiresAt);
 
-            // ✅ Build reset URL
+            // ✅ Build reset URL dynamically!
+            // Works on localhost AND Railway!
             String resetUrl
-                    = "https://" + LOCAL_IP
-                    + ":" + LOCAL_PORT
-                    + request.getContextPath()
-                    + "/reset-password?token="
+                    = AppConfig.getBaseUrl(request)
+                    + "reset-password?token="
                     + token;
 
             // ✅ Send email
