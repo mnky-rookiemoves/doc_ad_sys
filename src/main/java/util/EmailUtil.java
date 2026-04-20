@@ -1,6 +1,5 @@
 package util;
 
-import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
@@ -15,13 +14,11 @@ public class EmailUtil {
 
     /* =========================
        ✅ SENDGRID CONFIG
-       Uses Railway env variable
-       Falls back to local key
        ========================= */
     private static final String API_KEY
             = System.getenv("SENDGRID_API_KEY") != null
             ? System.getenv("SENDGRID_API_KEY")
-            : "SG.your-key-here";
+            : "";
 
     private static final String FROM_EMAIL
             = "vandam.system@gmail.com";
@@ -34,7 +31,6 @@ public class EmailUtil {
        ✅ SendGrid HTTPS API
        ✅ Works on Railway!
        ✅ Background thread
-       ✅ Never crashes app
        ========================= */
     public static void sendEmail(
             String toEmail,
@@ -64,23 +60,20 @@ public class EmailUtil {
                 Response response
                         = sg.api(request);
 
-                if (response.getStatusCode()
-                        == 202) {
+                if (response.getStatusCode() == 202) {
                     System.out.println(
                             "[EMAIL] ✅ Sent → "
                             + toEmail);
                 } else {
                     System.err.println(
-                            "[EMAIL] ⚠️ Failed → "
-                            + "Status: "
+                            "[EMAIL] ⚠️ Failed → Status: "
                             + response.getStatusCode()
-                            + " | "
-                            + response.getBody());
+                            + " | " + response.getBody());
                 }
 
             } catch (IOException e) {
                 System.err.println(
-                        "[EMAIL] ⚠️ Error → "
+                        "[EMAIL] ⚠️ Failed → "
                         + e.getMessage());
                 e.printStackTrace();
             }
