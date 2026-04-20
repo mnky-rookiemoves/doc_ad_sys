@@ -29,13 +29,6 @@ public class ForgotPasswordServlet
             = new PasswordResetDAO();
 
     /* =========================
-       LOCAL IP
-       ========================= */
-    String resetUrl = AppConfig.getBaseUrl(request)
-            + "reset-password?token="
-            + token;
-
-    /* =========================
        GET — Show form
        ========================= */
     @Override

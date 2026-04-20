@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import kyrie.AppConfig;
 import model.RequirementType;
 import model.Student;
 import model.StudentCategory;
@@ -367,13 +368,8 @@ public class StudentServlet extends HttpServlet {
                                 name.trim(),
                                 catName,
                                 reqNames,
-                                "https://"
-                                + LOCAL_IP
-                                + ":"
-                                + LOCAL_PORT
-                                + request.getContextPath()
-                                + "/uploads?studentId="
-                                + s.getStudentId());
+                                AppConfig.getBaseUrl(request) + "uploads?studentId=" + s.getStudentId()
+                        );
                     }
                 } catch (Exception emailEx) {
                     System.err.println(
