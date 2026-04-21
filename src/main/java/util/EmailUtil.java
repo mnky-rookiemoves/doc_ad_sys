@@ -1,35 +1,28 @@
 package util;
 
-import java.io.IOException;       // ✅ Correct!
-import java.util.List;
+import com.resend.Resend;
+import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.services.emails.model.CreateEmailResponse;
 
-import com.sendgrid.Method;
-import com.sendgrid.Request;
-import com.sendgrid.Response;
-import com.sendgrid.SendGrid;
-import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Content;
-import com.sendgrid.helpers.mail.objects.Email;
+import java.util.List;
 
 public class EmailUtil {
 
-    /* =========================
-       ✅ SENDGRID CONFIG
-       ========================= */
+    // ✅ Resend API Key from Railway
     private static final String API_KEY
-            = System.getenv("SENDGRID_API_KEY") != null
-            ? System.getenv("SENDGRID_API_KEY")
+            = System.getenv("RESEND_API_KEY") != null
+            ? System.getenv("RESEND_API_KEY")
             : "";
 
     private static final String FROM_EMAIL
-            = "vandam.system@gmail.com";
+            = "onboarding@resend.dev";
 
     private static final String FROM_NAME
             = "VANDAM Document Admission System";
 
     /* =========================
        CORE SEND METHOD
-       ✅ SendGrid HTTPS API
+       ✅ Resend HTTPS API
        ✅ Works on Railway!
        ✅ Background thread
        ========================= */
@@ -40,40 +33,27 @@ public class EmailUtil {
 
         new Thread(() -> {
             try {
-                Email from = new Email(
-                        FROM_EMAIL, FROM_NAME);
-                Email to = new Email(toEmail);
-                Content content = new Content(
-                        "text/html", htmlBody);
+                Resend resend = new Resend(API_KEY);
 
-                Mail mail = new Mail(
-                        from, subject,
-                        to, content);
+                CreateEmailOptions params
+                        = CreateEmailOptions.builder()
+                                .from(FROM_NAME
+                                        + " <" + FROM_EMAIL + ">")
+                                .to(toEmail)
+                                .subject(subject)
+                                .html(htmlBody)
+                                .build();
 
-                SendGrid sg
-                        = new SendGrid(API_KEY);
-                Request request = new Request();
+                CreateEmailResponse response
+                        = resend.emails().send(params);
 
-                // ✅ HttpMethod instead of Method!
-                request.setMethod(Method.POST);
-                request.setEndpoint("mail/send");
-                request.setBody(mail.build());
+                System.out.println(
+                        "[EMAIL] ✅ Sent → "
+                        + toEmail
+                        + " | ID: "
+                        + response.getId());
 
-                Response response
-                        = sg.api(request);
-
-                if (response.getStatusCode() == 202) {
-                    System.out.println(
-                            "[EMAIL] ✅ Sent → "
-                            + toEmail);
-                } else {
-                    System.err.println(
-                            "[EMAIL] ⚠️ Failed → Status: "
-                            + response.getStatusCode()
-                            + " | " + response.getBody());
-                }
-
-            } catch (IOException e) {
+            } catch (Exception e) {
                 System.err.println(
                         "[EMAIL] ⚠️ Failed → "
                         + e.getMessage());
@@ -81,6 +61,7 @@ public class EmailUtil {
             }
         }).start();
     }
+
 
     /* =========================
        TEMPLATE 1
